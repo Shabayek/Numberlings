@@ -52,6 +52,12 @@ parent gate) → ESRB E / PEGI 3 expected.
 4. Verify Data Safety answers + Families declaration in Play Console.
 5. Confirm "sleep invitation" setting reaches the play screen on a fresh install.
 
+**Verified build numbers (this repo, JDK 17 / AGP 8.7.3):**
+- `assembleDebug` → 17.8 MB, `assembleRelease` (R8) → **1.49 MB** unsigned APK.
+- Release build passes `lintVital` (Play submission lint gate).
+- Google Play prefers an **AAB** for uploads — run `.\gradlew.bat bundleRelease` with the
+  signing config from the guide above before uploading to the listing.
+
 ## Signing a release build (keystore guide)
 The debug build signs itself. A release build needs YOUR keystore — make it
 once, guard it forever, and lose it never (a lost keystore cannot push updates

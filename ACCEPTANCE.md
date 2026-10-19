@@ -4,13 +4,14 @@
 | --- | --- |
 | COPPA / GDPR-K / Play Families | No INTERNET permission; Room on-device only; no third-party telemetry. See `STORE_READY.md` Data Safety answers. |
 | No ads | No ad SDKs in `app/build.gradle.kts`; nothing to load. |
-| No loot boxes / random rewards | Rewards are deterministic (`VillageRepository.celebrateAndRest`, hearts only); seeds are for puzzle difficulty, never for prizes. |
+| No loot boxes / random rewards | Rewards are deterministic (`StickerAlbum.indexFor(blocksCompleted)` + Market Day cadence; hearts only otherwise); seeds drive puzzle difficulty, never prizes. |
 | Purchases behind a parental gate | `ui/grownups/GrownUpsGate.kt` (3s hold + mental arithmetic) is the only path to `GrownUpsHome` and its `UnlockButton`. |
 | One-time purchase only | `UnlockStore` wires a single INAPP product; `billingConfigured=false` until Play Console SKU exists (documented). |
 | Community unlock | Buttons live in `GrownUpsHome` — no stigma, no questions, same unlock. |
 | No dark patterns | No streak counters that punish, no timers, no skip-with-money; `PuzzleFrame` respects wrong answers with a kind pause and "Again, please". |
 | Offline playable | No network calls anywhere; airplane-mode safe. |
 | Pre-reader friendly | Every task has `spoken` text; `Speaker` (system TTS) reads it; "Again, please" repeats it. |
+| APK ≤ 25 MB | Verified: `assembleRelease` (R8 + resource shrink) produces a **1.49 MB** APK (`app-release-unsigned.apk`); debug build 17.8 MB. |
 | Wellbeing | `SleepyInvitation` shows after the grown-up cap (12 min default), always dismissible. |
 | Adaptive without pressure | `AdaptiveState.nextSkill` picks the weakest skill, tiers move with mastery, bias knob never punishes. |
 
