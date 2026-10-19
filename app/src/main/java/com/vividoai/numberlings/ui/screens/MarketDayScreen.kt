@@ -31,8 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
 import com.vividoai.numberlings.core.model.StickerAlbum
+import com.vividoai.numberlings.ui.puzzle.Mood
+import com.vividoai.numberlings.ui.puzzle.Numberling
 import com.vividoai.numberlings.ui.theme.Cocoa
 import com.vividoai.numberlings.ui.theme.CocoaSoft
+import com.vividoai.numberlings.ui.theme.Sunflower
 
 private fun stickerColor(index: Int): Color = when (StickerAlbum.meadow(index)) {
     0 -> Color(0xFF6FA07A)
@@ -63,11 +66,18 @@ fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Market Day", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "The stall keeper would love exactly $target apples in the basket. Tap them, then tap Ready!",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Cocoa
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Numberling(
+                modifier = Modifier.size(80.dp),
+                mood = if (granted) Mood.CHEER else Mood.THINK,
+                body = Sunflower
+            )
+            Text(
+                "The stall keeper would love exactly $target apples in the basket. Tap them, then tap Ready!",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Cocoa
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,9 @@ import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.core.model.SkillKind
 import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.Task
+import com.vividoai.numberlings.ui.puzzle.Mood
+import com.vividoai.numberlings.ui.puzzle.Numberling
+import com.vividoai.numberlings.ui.puzzle.NumberlingBodyColor
 import com.vividoai.numberlings.ui.puzzle.PuzzleArt
 import com.vividoai.numberlings.ui.theme.Cocoa
 import com.vividoai.numberlings.ui.theme.MeadowColors
@@ -51,12 +55,14 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
     var solvedInBlock by remember { mutableIntStateOf(0) }
     var frame by remember { mutableStateOf(PuzzleFrame.SHOWING) }
     var biasAndTier by remember { mutableIntStateOf(0) }
+    var encouraged by remember { mutableStateOf(false) }
 
     fun preparePuzzle() {
         seed = seed + 7
         skill = nextSkillFor(meadow, seed)
         val bias = GameHub.repository.settingsNow().bias
         biasAndTier = (GameHub.repository.adaptive.value.tierFor(skill) + bias).coerceIn(0, 2)
+        encouraged = false
     }
 
     LaunchedEffect(Unit) { preparePuzzle() }
@@ -81,6 +87,12 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Numberling(
+                modifier = Modifier.size(44.dp),
+                mood = if (encouraged) Mood.OOPS else Mood.HAPPY,
+                body = NumberlingBodyColor(meadow.ordinal, MeadowColors)
+            )
+            Spacer(Modifier.width(10.dp))
             OutlinedButton(onClick = onBack) { Text("Back") }
             Spacer(Modifier.width(10.dp))
             Text(meadow.title, fontWeight = FontWeight.Bold, color = accent)
@@ -120,6 +132,7 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                                     GameHub.repository.record(task.skill, right)
                                     if (right) {
                                         GameHub.sound.poke()
+                                        encouraged = false
                                         solvedInBlock++
                                         if (solvedInBlock >= 6) {
                                             val stickerIndex = GameHub.repository.finishBlockForSticker()
@@ -133,6 +146,7 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                                         }
                                     } else {
                                         GameHub.sound.maybe()
+                                        encouraged = true
                                     }
                                 }
                             ) {
@@ -143,12 +157,37 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                     }
                 }
             }
+
+            if (encouraged) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Numberling(
+                        modifier = Modifier.size(72.dp),
+                        mood = Mood.OOPS,
+                        body = NumberlingBodyColor(meadow.ordinal, MeadowColors)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Not quite yet — the Numberlings will count it together with you.",
+                        color = Cocoa
+                    )
+                    if (GameHub.repository.settingsNow().narration) {
+                        LaunchedEffect(task) { GameHub.speaker.say("Let's count together.") }
+                    }
+                }
+            }
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Numberling(
+                        modifier = Modifier.size(120.dp),
+                        mood = Mood.CHEER,
+                        body = NumberlingBodyColor(meadow.ordinal, MeadowColors)
+                    )
+                    Spacer(Modifier.height(18.dp))
                     Text(
                         "Beautiful work — one more heart inside the village.",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Cocoa
                     )
                     Spacer(Modifier.height(18.dp))
                     Button(onClick = {
