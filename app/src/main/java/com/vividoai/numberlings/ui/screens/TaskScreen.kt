@@ -1,5 +1,7 @@
 package com.vividoai.numberlings.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
@@ -38,7 +42,9 @@ import com.vividoai.numberlings.ui.puzzle.Numberling
 import com.vividoai.numberlings.ui.puzzle.NumberlingBodyColor
 import com.vividoai.numberlings.ui.puzzle.PuzzleArt
 import com.vividoai.numberlings.ui.theme.Cocoa
+import com.vividoai.numberlings.ui.theme.CocoaSoft
 import com.vividoai.numberlings.ui.theme.MeadowColors
+import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 private enum class PuzzleFrame { SHOWING, AFTER_WORK }
@@ -56,6 +62,8 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
     var frame by remember { mutableStateOf(PuzzleFrame.SHOWING) }
     var biasAndTier by remember { mutableIntStateOf(0) }
     var encouraged by remember { mutableStateOf(false) }
+    var friendMood by remember { mutableStateOf(Mood.HAPPY) }
+    var moodTick by remember { mutableIntStateOf(0) }
 
     fun preparePuzzle() {
         seed = seed + 7
@@ -63,6 +71,15 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
         val bias = GameHub.repository.settingsNow().bias
         biasAndTier = (GameHub.repository.adaptive.value.tierFor(skill) + bias).coerceIn(0, 2)
         encouraged = false
+        friendMood = Mood.HAPPY
+    }
+
+    // The friend warms back to rest after cheering or wobbling.
+    LaunchedEffect(moodTick) {
+        if (friendMood != Mood.HAPPY) {
+            delay(1200)
+            friendMood = Mood.HAPPY
+        }
     }
 
     LaunchedEffect(Unit) { preparePuzzle() }
@@ -88,8 +105,16 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Numberling(
-                modifier = Modifier.size(44.dp),
-                mood = if (encouraged) Mood.OOPS else Mood.HAPPY,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable {
+                        if (frame == PuzzleFrame.SHOWING &&
+                            GameHub.repository.settingsNow().narration
+                        ) {
+                            GameHub.speaker.say(task.spoken)
+                        }
+                    },
+                mood = if (encouraged) Mood.OOPS else friendMood,
                 body = NumberlingBodyColor(meadow.ordinal, MeadowColors)
             )
             Spacer(Modifier.width(10.dp))
@@ -98,6 +123,27 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
             Text(meadow.title, fontWeight = FontWeight.Bold, color = accent)
             Spacer(Modifier.weight(1f))
             Text("solved $solvedInBlock", color = Cocoa)
+        }
+
+        // Six dots: how far this block has wandered. A pre-reader can watch
+        // progress without reading a single word.
+        if (frame == PuzzleFrame.SHOWING) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
+                repeat(6) { dot ->
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (dot < solvedInBlock) accent
+                                else CocoaSoft.copy(alpha = 0.25f)
+                            )
+                    )
+                }
+            }
         }
 
         if (frame == PuzzleFrame.SHOWING) {
@@ -133,6 +179,8 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                                     if (right) {
                                         GameHub.sound.poke()
                                         encouraged = false
+                                        friendMood = Mood.CHEER
+                                        moodTick++
                                         solvedInBlock++
                                         if (solvedInBlock >= 6) {
                                             val stickerIndex = GameHub.repository.finishBlockForSticker()
