@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Numberlings</string>
+    <string name="gate_for_grownups">For grown-ups</string>
+    <string name="gate_hold">Hold the button for 3 seconds</string>
+    <string name="gate_question_title">One quick grown-up question</string>
+    <string name="gate_check">Check</string>
+    <string name="gate_retry">Let\'s try again</string>
+    <string name="unlock_title">Unlock all six meadows</string>
+    <string name="unlock_blurb">One-time purchase, owned forever. No subscriptions, no extras, no ads — ever.</string>
+    <string name="unlock_community">If a one-time price is hard for your family right now, tap Community Unlock — it opens everything, no questions asked.</string>
+    <string name="privacy_summary">
+        Numberlings is made for children, so it is built on a few promises.\n\n
+        1. Nothing is collected. The app has no internet permission, so progress, settings and drawings never leave this device.\n\n
+        2. No accounts, no chat, no sharing, no ads, no tracking.\n\n
+        3. Buying is a grown-up task: the shop lives behind a parent gate and offers one single purchase.\n\n
+        4. Every reward is earned by practising — never bought and never random.\n\n
+        5. Play time is respected: no timers against the child, no streak guilt, and a gentle sleep invitation around every 12 minutes.\n\n
+        Questions? Write to hello@numberlings.app (a grown-up can do that from anywhere).
+    </string>
+</resources>
