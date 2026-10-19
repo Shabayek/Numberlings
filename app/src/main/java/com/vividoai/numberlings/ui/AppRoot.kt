@@ -1,5 +1,6 @@
 package com.vividoai.numberlings.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -11,15 +12,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.vividoai.numberlings.GameHub
-import com.vividoai.numberlings.core.data.GrownUps
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.ui.grownups.GrownUpsGate
 import com.vividoai.numberlings.ui.grownups.GrownUpsHome
 import com.vividoai.numberlings.ui.screens.MarketDayScreen
+import com.vividoai.numberlings.ui.screens.OnboardingScreen
 import com.vividoai.numberlings.ui.screens.SleepyInvitation
 import com.vividoai.numberlings.ui.screens.StickerAlbumScreen
 import com.vividoai.numberlings.ui.screens.TaskScreen
 import com.vividoai.numberlings.ui.screens.VillageScreen
+import com.vividoai.numberlings.ui.theme.Paper
 import kotlinx.coroutines.delay
 
 /** Where we are. A small, closed world of four places: village, puzzle, sleep, grown-ups. */
@@ -42,7 +44,18 @@ sealed interface Destination {
 fun AppRoot() {
     var destination by remember { mutableStateOf<Destination>(Destination.Village) }
     var sleepy by remember { mutableStateOf(false) }
-    val settings by GameHub.repository.settings.collectAsState(initial = GrownUps())
+    val settingsOrNull by GameHub.repository.settings.collectAsState(initial = null)
+
+    // One soft cream beat while settings load from the device — no flash of
+    // the welcome for returning families.
+    val settings = settingsOrNull ?: run {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Paper)
+        )
+        return
+    }
 
     // Wellbeing: after the grown-up-set number of minutes the village invites rest.
     LaunchedEffect(settings.sessionCapMinutes) {
@@ -57,6 +70,10 @@ fun AppRoot() {
                 SleepyInvitation(
                     onRest = { sleepy = false },
                     onPlayMore = { sleepy = false }
+                )
+            } else if (!settings.onboarded) {
+                OnboardingScreen(
+                    onDone = { destination = Destination.Village }
                 )
             } else {
                 VillageScreen(

@@ -87,6 +87,11 @@ class VillageRepository(context: Context) {
         }
     }
 
+    /** Called when the child (or their grown-up) finishes the first welcome. */
+    fun completeOnboarding() {
+        setGrownUps(currentSettings.copy(onboarded = true))
+    }
+
     private fun persistSnapshot() {
         scope.launch {
             val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")

@@ -15,14 +15,17 @@
 | Adaptive without pressure | `AdaptiveState.nextSkill` picks the weakest skill, tiers move with mastery, bias knob never punishes. |
 
 ## Manual test plan (host device or emulator)
-1. Fresh install → tap the first meadow → six puzzles → heart card appears.
-2. Tap wrong answer → gentle cue, same puzzle stays, no lock-outs, no score fall.
-3. "Again, please" re-speaks the puzzle (voice setting on).
-4. Grown-ups button → hold 3 s → adult question → settings opens; child cannot pass by tapping fast.
-5. Unlock button without Play Store → honest "not reachable" message + Community Unlock.
-6. Airplane mode on → everything above still works identically.
-7. Session cap 5 min → rest card appears after ~5 minutes and never forces anything.
-8. `gradle test` → engine tests green (see `app/src/test`).
+1. Fresh install → three-page welcome story narrates itself, dots advance, "Let's play" opens the village; second launch skips the welcome entirely.
+2. Tap the first meadow → six puzzles → heart card appears.
+3. Tap wrong answer → gentle cue, a sad-but-kind Numberling comforts ("we'll count it together"), same puzzle stays, no lock-outs, no score fall.
+4. "Again, please" re-speaks the puzzle (voice setting on).
+5. Village cards each show their meadow illustration; locked meadows keep sleeping.
+6. Every 5th block ends in Market Day → tap exactly the asked number of apples → sticker lands in the album.
+7. Grown-ups button → hold 3 s → adult question → settings opens; child cannot pass by tapping fast.
+8. Unlock button without Play Store → honest "not reachable" message + Community Unlock.
+9. Airplane mode on → everything above still works identically.
+10. Session cap 5 min → rest card appears after ~5 minutes and never forces anything.
+11. `gradle test` → engine tests green (see `app/src/test`).
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

@@ -22,7 +22,9 @@ data class GrownUps(
     /** 0 = don't adjust; otherwise minutes before the gentle sleep invitation. */
     val sessionCapMinutes: Int = 12,
     /** -1..+1 puzzle difficulty nudge for accessibility (SkillScore.tier). */
-    val bias: Int = 0
+    val bias: Int = 0,
+    /** First-run welcome: shown once, skipped on every return (never re-gated). */
+    val onboarded: Boolean = false
 ) {
     val rateFloat: Float get() = (0.5f + voiceSpeed * 0.1f)
 }
@@ -38,6 +40,7 @@ class GrownUpsStore(private val context: Context) {
         val voice = intPreferencesKey("voice_speed")
         val cap = intPreferencesKey("session_cap")
         val bias = intPreferencesKey("bias")
+        val onboarded = booleanPreferencesKey("onboarded")
     }
 
     val flow: Flow<GrownUps> = context.store.data.map { p ->
@@ -47,7 +50,8 @@ class GrownUpsStore(private val context: Context) {
             soundVolume = p[Keys.volume] ?: 60,
             voiceSpeed = p[Keys.voice] ?: 9,
             sessionCapMinutes = p[Keys.cap] ?: 12,
-            bias = p[Keys.bias] ?: 0
+            bias = p[Keys.bias] ?: 0,
+            onboarded = p[Keys.onboarded] ?: false
         )
     }
 
@@ -59,6 +63,7 @@ class GrownUpsStore(private val context: Context) {
             p[Keys.voice] = next.voiceSpeed
             p[Keys.cap] = next.sessionCapMinutes
             p[Keys.bias] = next.bias
+            p[Keys.onboarded] = next.onboarded
         }
     }
 }
