@@ -90,6 +90,12 @@ fun GrownUpsHome(backToPlay: () -> Unit) {
                 SliderRow("Gentle difficulty nudge", grownUps.bias, -1f..1f, steps = 1) { next ->
                     GameHub.repository.setGrownUps(grownUps.copy(bias = next))
                 }
+                ToggleRow(
+                    "Replay the welcome story",
+                    !grownUps.onboarded,
+                    onChange = { replay -> GameHub.repository.setGrownUps(grownUps.copy(onboarded = !replay)) }
+                )
+                Text("Start hearing the story again when you press 'back to play'.", color = Cocoa)
             }
         }
 
