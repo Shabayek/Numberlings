@@ -48,6 +48,41 @@ parent gate) → ESRB E / PEGI 3 expected.
 ## Launch checklist
 1. Create in-product item `numberlings_meadows_all` (one-time, non-consumable).
 2. Set `UnlockStore.billingConfigured = true` after price review.
-3. Ship signed release build (see README build section for the keystore reminder).
+3. Ship signed release build (see "Signing a release build" below).
 4. Verify Data Safety answers + Families declaration in Play Console.
 5. Confirm "sleep invitation" setting reaches the play screen on a fresh install.
+
+## Signing a release build (keystore guide)
+The debug build signs itself. A release build needs YOUR keystore — make it
+once, guard it forever, and lose it never (a lost keystore cannot push updates
+to the same listing unless Play App Signing is enrolled).
+
+1. Generate a keystore (one command, run from the project root; replace the
+   two `...` entries with your details):
+   ```
+   & "C:\Users\User\.jdks\jbr-17.0.14\bin\keytool" -genkeypair -v `
+     -keystore numberlings-release.jks -alias numberlings -keyalg RSA `
+     -keysize 4096 -validity 10950 -storetype PKCS12
+   ```
+   Choose a strong store password. `numberlings-release.jks` must NEVER be
+   committed (it is already in `.gitignore` via `*.keystore` — rename your file
+   accordingly or add it) and never inside the repo folder if you can help it.
+2. Wire the signing config in `app/build.gradle.kts` through a local file that
+   stays out of git (e.g. `keystore.properties` in the repo root, also ignored):
+   ```
+   storeFile=C:/path/to/numberlings-release.jks
+   storePassword=...
+   keyAlias=numberlings
+   keyPassword=...
+   ```
+   and read it in `app/build.gradle.kts` (loadFileOrNull pattern), falling back
+   to a plain unsigned release when the file is absent — so `assembleRelease`
+   always succeeds on a clean clone.
+3. Enroll in **Play App Signing** in Play Console and upload the release AAB/APK
+   once; Google then holds the true signing key and your keystore becomes a
+   long-lived backup. This is the single best protection against keystore loss.
+4. Build: `$env:JAVA_HOME = "C:\Users\User\.jdks\jbr-17.0.14"; .\gradlew.bat assembleRelease`
+   — R8 shrink runs automatically (per the project's `isMinifyEnabled` config).
+   Expect the release APK to be noticeably smaller than the debug build.
+5. Sanity: install the release APK on a device → welcome story → first meadow →
+   Market Day → Grown-ups gate, all with airplane mode on.

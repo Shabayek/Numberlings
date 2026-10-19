@@ -29,10 +29,20 @@ class Speaker(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    fun say(text: String) {
+    fun say(text: String, slow: Boolean = false) {
         if (!ready) return
+        if (slow) {
+            // Bedtime voice: slowest, warmest reading, then restore the
+            // grown-up's chosen pace a beat later.
+            engine.setSpeechRate(0.55f)
+        }
         engine.stop()
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "puzzle")
+        if (slow) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                if (ready) engine.setSpeechRate(rate)
+            }, 900)
+        }
     }
 
     fun hush() {
