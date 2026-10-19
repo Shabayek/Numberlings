@@ -30,6 +30,7 @@ import com.vividoai.numberlings.core.engine.Curriculum
 import com.vividoai.numberlings.core.engine.TaskFactory
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.core.model.SkillKind
+import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.Task
 import com.vividoai.numberlings.ui.puzzle.PuzzleArt
 import com.vividoai.numberlings.ui.theme.Cocoa
@@ -44,7 +45,7 @@ private fun nextSkillFor(meadow: Meadow, seed: Long): SkillKind {
 }
 
 @Composable
-fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Meadow) -> Unit) {
+fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit) {
     var seed by remember { mutableStateOf(Random.nextLong()) }
     var skill by remember { mutableStateOf(nextSkillFor(meadow, seed)) }
     var solvedInBlock by remember { mutableIntStateOf(0) }
@@ -121,9 +122,12 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Meadow) -> U
                                         GameHub.sound.poke()
                                         solvedInBlock++
                                         if (solvedInBlock >= 6) {
-                                            GameHub.repository.celebrateAndRest()
-                                            frame = PuzzleFrame.AFTER_WORK
-                                            celebrateBlock(meadow)
+                                            val stickerIndex = GameHub.repository.finishBlockForSticker()
+                                            if (StickerAlbum.isMarketDay(stickerIndex)) {
+                                                celebrateBlock(stickerIndex)
+                                            } else {
+                                                frame = PuzzleFrame.AFTER_WORK
+                                            }
                                         } else {
                                             preparePuzzle()
                                         }

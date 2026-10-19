@@ -37,7 +37,7 @@ import com.vividoai.numberlings.ui.theme.MeadowColors
  * gentle moment: the previous one's puzzles stay warm, so review is always alive.
  */
 @Composable
-fun VillageScreen(openMeadow: (Meadow) -> Unit, openGrownUps: () -> Unit) {
+fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGrownUps: () -> Unit) {
     val blocks by GameHub.repository.blocksCompleted.collectAsState()
     val hearts by GameHub.repository.hearts.collectAsState()
 
@@ -56,6 +56,9 @@ fun VillageScreen(openMeadow: (Meadow) -> Unit, openGrownUps: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Text("hearts $hearts · puzzles $blocks", style = MaterialTheme.typography.bodyLarge, color = CocoaSoft)
             Spacer(Modifier.weight(1f))
+            androidx.compose.material3.TextButton(onClick = openStickers) {
+                Text("Stickers")
+            }
             androidx.compose.material3.TextButton(onClick = openGrownUps) {
                 Text("Grown-ups")
             }

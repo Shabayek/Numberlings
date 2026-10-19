@@ -15,7 +15,9 @@ import com.vividoai.numberlings.core.data.GrownUps
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.ui.grownups.GrownUpsGate
 import com.vividoai.numberlings.ui.grownups.GrownUpsHome
+import com.vividoai.numberlings.ui.screens.MarketDayScreen
 import com.vividoai.numberlings.ui.screens.SleepyInvitation
+import com.vividoai.numberlings.ui.screens.StickerAlbumScreen
 import com.vividoai.numberlings.ui.screens.TaskScreen
 import com.vividoai.numberlings.ui.screens.VillageScreen
 import kotlinx.coroutines.delay
@@ -24,6 +26,8 @@ import kotlinx.coroutines.delay
 sealed interface Destination {
     data object Village : Destination
     data class MeadowPlay(val meadow: Meadow) : Destination
+    data class MarketDay(val stickerIndex: Int) : Destination
+    data object Album : Destination
     data object GrownUps : Destination
     data object GrownUpsHome : Destination
     data object Sleeping : Destination
@@ -57,6 +61,7 @@ fun AppRoot() {
             } else {
                 VillageScreen(
                     openMeadow = { meadow -> destination = Destination.MeadowPlay(meadow) },
+                    openStickers = { destination = Destination.Album },
                     openGrownUps = { destination = Destination.GrownUps }
                 )
             }
@@ -65,7 +70,18 @@ fun AppRoot() {
         is Destination.MeadowPlay -> TaskScreen(
             meadow = where.meadow,
             onBack = { destination = Destination.Village },
-            celebrateBlock = { }
+            celebrateBlock = { stickerIndex ->
+                destination = Destination.MarketDay(stickerIndex)
+            }
+        )
+
+        is Destination.MarketDay -> MarketDayScreen(
+            stickerIndex = where.stickerIndex,
+            onDone = { destination = Destination.Village }
+        )
+
+        Destination.Album -> StickerAlbumScreen(
+            onBack = { destination = Destination.Village }
         )
 
         Destination.GrownUps -> GrownUpsGate(

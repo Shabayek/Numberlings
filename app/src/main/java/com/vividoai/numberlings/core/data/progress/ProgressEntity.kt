@@ -19,6 +19,8 @@ data class ProgressEntity(
     @PrimaryKey val id: String = "village",
     /** skillId:mastery(0-100) pairs, semicolon separated. */
     val masteryCsv: String,
+    /** Earned album stickers, comma separated indices. */
+    val stickersCsv: String = "",
     val hearts: Int = 0,
     val blocksCompleted: Int = 0
 )
@@ -35,7 +37,7 @@ interface ProgressDao {
     suspend fun upsert(progress: ProgressEntity)
 }
 
-@Database(entities = [ProgressEntity::class], version = 1, exportSchema = false)
+@Database(entities = [ProgressEntity::class], version = 2, exportSchema = false)
 abstract class VillageDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
 
