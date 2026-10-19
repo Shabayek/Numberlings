@@ -16,17 +16,23 @@
 | Adaptive without pressure | `AdaptiveState.nextSkill` picks the weakest skill, tiers move with mastery, bias knob never punishes. |
 
 ## Manual test plan (host device or emulator)
-1. Fresh install → three-page welcome story narrates itself, dots advance, "Let's play" opens the village; second launch skips the welcome entirely.
-2. Tap the first meadow → six puzzles → heart card appears.
-3. Tap wrong answer → gentle cue, a sad-but-kind Numberling comforts ("we'll count it together"), same puzzle stays, no lock-outs, no score fall.
+> **Status: the flows below were executed on an emulator (Medium_Phone API 37, 1080×2400)**
+> **on 2026-10-19 against v0.9.9-sources. Screenshots reviewed step by step.**
+> Bank of findings fixed in the same pass: village header overflow clipped the
+> Grown-ups button on 1080-wide screens (now two slim rows), and the gate hold
+> button rendered as a broken capsule (now a clean 176 dp circle).
+
+1. Fresh install → three-page welcome story narrates itself, dots advance, "Let's play" opens the village; second launch skips the welcome entirely. **(emulator-verified)**
+2. Tap the first meadow → six puzzles → heart card appears. **(emulator-verified)**
+3. Tap wrong answer → gentle cue, a sad-but-kind Numberling comforts ("we'll count it together"), same puzzle stays, no lock-outs, no score fall. **(emulator-verified)**
 4. "Again, please" re-speaks the puzzle (voice setting on).
-5. Village cards each show their meadow illustration; locked meadows keep sleeping.
-6. Every 5th block ends in Market Day → tap exactly the asked number of apples → sticker lands in the album.
-7. Grown-ups button → hold 3 s → adult question → settings opens; child cannot pass by tapping fast.
+5. Village cards each show their meadow illustration; locked meadows keep sleeping. **(emulator-verified)**
+6. Every 5th block ends in Market Day → tap exactly the asked number of apples → sticker lands in the album. Album grid verified; full Market Day run needs 30 puzzles (5 blocks) or a state reset — engine cadence covered by unit tests.
+7. Grown-ups button → gate → 3 s hold → adult question (11 × 9) → settings opens; child cannot pass by tapping fast. **(emulator-verified)**
 8. Unlock button without Play Store → honest "not reachable" message + Community Unlock.
-9. Airplane mode on → everything above still works identically.
+9. Airplane mode on → everything above still works identically. **(partially covered: emulator has no SIM; Play not signed in for the sideloaded install)**
 10. Session cap 5 min → rest card appears after ~5 minutes and never forces anything.
-11. `gradle test` → engine tests green (see `app/src/test`).
+11. `gradle test` → engine tests green (see `app/src/test`). **(verified locally)**
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

@@ -50,19 +50,27 @@ fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGr
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Two slim rows so nothing is ever clipped on small screens: the
+        // village identity with the grown-ups door on top, the child's own
+        // scoreboard and sticker album beneath.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Numberlings", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.TextButton(onClick = openGrownUps) {
+                Text("Grown-ups")
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text("hearts $hearts · puzzles $blocks", style = MaterialTheme.typography.bodyLarge, color = CocoaSoft)
             Spacer(Modifier.weight(1f))
             androidx.compose.material3.TextButton(onClick = openStickers) {
                 Text("Stickers")
-            }
-            androidx.compose.material3.TextButton(onClick = openGrownUps) {
-                Text("Grown-ups")
             }
         }
         Spacer(Modifier.height(2.dp))

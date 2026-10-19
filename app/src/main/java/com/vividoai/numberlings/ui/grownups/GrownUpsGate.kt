@@ -5,12 +5,14 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -94,11 +96,11 @@ private fun HoldStep(lockDone: () -> Unit, back: () -> Unit, sound: SoundCue?) {
 
 @Composable
 fun RoundHoldButton(holding: Boolean, fill: Float, onHoldStart: () -> Unit, onHoldStop: () -> Unit) {
-    val radius = 64.dp
-    androidx.compose.material3.Surface(
-        tonalElevation = 4.dp,
-        shape = androidx.compose.foundation.shape.CircleShape,
+    val diameter = 176.dp
+    Box(
         modifier = Modifier
+            .size(diameter)
+            .clip(androidx.compose.foundation.shape.CircleShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -111,11 +113,12 @@ fun RoundHoldButton(holding: Boolean, fill: Float, onHoldStart: () -> Unit, onHo
                     onHoldStop()
                 }
             }
-            .padding(24.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
             progress = { fill },
-            modifier = Modifier.height(radius * 2).padding(8.dp)
+            modifier = Modifier.size((diameter - 32.dp))
         )
     }
 }
