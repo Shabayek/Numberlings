@@ -23,11 +23,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
 import com.vividoai.numberlings.core.engine.Curriculum
 import com.vividoai.numberlings.core.model.Meadow
+import com.vividoai.numberlings.ui.puzzle.MeadowArt
 import com.vividoai.numberlings.ui.theme.Cocoa
 import com.vividoai.numberlings.ui.theme.CocoaSoft
 import com.vividoai.numberlings.ui.theme.MeadowColors
@@ -78,6 +80,18 @@ fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGr
                 modifier = Modifier.clickable(enabled = unlocked) { openMeadow(meadow) }
             ) {
                 Column(Modifier.padding(18.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                    ) {
+                        MeadowArt(
+                            meadow = meadow,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
                     Text(meadow.title, fontWeight = FontWeight.Bold, color = if (unlocked) accent else CocoaSoft)
                     Text(meadow.subtitle, color = Cocoa)
                 }
