@@ -27,7 +27,7 @@
 3. Tap wrong answer → gentle cue, a sad-but-kind Numberling comforts ("we'll count it together"), same puzzle stays, no lock-outs, no score fall. **(emulator-verified)**
 4. "Again, please" re-speaks the puzzle (voice setting on).
 5. Village cards each show their meadow illustration; locked meadows keep sleeping. **(emulator-verified)**
-6. Every 5th block ends in Market Day → tap exactly the asked number of apples → sticker lands in the album. Album grid verified; full Market Day run needs 30 puzzles (5 blocks) or a state reset — engine cadence covered by unit tests.
+6. Every 5th block ends in Market Day → tap exactly the asked number of apples → sticker lands in the album. **(emulator-verified end-to-end)** Full run executed on-device: block 5 opened Market Day, the stall keeper asked 7 apples (= 3 + stickerIndex % 5), exactly 7 taps, "Ready!" granted "Sticker 5 of 30", slot 5 filled meadow-green in the album, and it **survived a full app restart** ("Earned so far: 1 of 30"). Found and fixed during this run: Market Day's apple plates overflowed a single row (apples 6–9 unreachable on any phone — now a wrapping FlowRow), and stickers were never written to disk (the album reset to 0/30 on relaunch — now persisted in `persistSnapshot`).
 7. Grown-ups button → gate → 3 s hold → adult question (11 × 9) → settings opens; child cannot pass by tapping fast. **(emulator-verified)**
 8. Unlock button without Play Store → honest "not reachable" message + Community Unlock.
 9. Airplane mode on → everything above still works identically. **(partially covered: emulator has no SIM; Play not signed in for the sideloaded install)**

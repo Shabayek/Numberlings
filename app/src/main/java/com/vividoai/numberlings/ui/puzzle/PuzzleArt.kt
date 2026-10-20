@@ -72,7 +72,14 @@ private fun DrawScope.drawLooseThings(count: Int, color: Color, top: Boolean = t
     val filled = concentricPrefix(
         count = count,
         color = color,
-        yList = if (top) listOf(0.25f, 0.5f) else listOf(0.75f, 0.5f)
+        yList = when {
+            count <= 12 && top -> listOf(0.25f, 0.5f)
+            count <= 12 -> listOf(0.75f, 0.5f)
+            // Counts above twelve get three slimmer rows so every skittle
+            // stays visible — a hidden dot would make the puzzle a lie.
+            top -> listOf(0.15f, 0.3f, 0.45f)
+            else -> listOf(0.55f, 0.7f, 0.85f)
+        }
     )
 }
 

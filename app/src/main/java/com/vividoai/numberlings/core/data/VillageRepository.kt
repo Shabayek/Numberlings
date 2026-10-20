@@ -98,6 +98,7 @@ class VillageRepository(context: Context) {
             database.progressDao().upsert(
                 latest.copy(
                     masteryCsv = adaptive.value.toCsv(),
+                    stickersCsv = _stickers.value.sorted().joinToString(","),
                     hearts = _hearts.value,
                     blocksCompleted = _blocksCompleted.value
                 )

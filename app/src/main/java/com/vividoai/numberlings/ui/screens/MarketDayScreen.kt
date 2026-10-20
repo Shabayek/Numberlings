@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +53,7 @@ private fun stickerColor(index: Int): Color = when (StickerAlbum.meadow(index)) 
  * Counting them right earns the honest sticker. No timer, no failure: if the
  * handful is off, we simply re-count together.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
     val target = 3 + (stickerIndex % 5)
@@ -79,9 +82,13 @@ fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
             )
         }
 
-        Row(
+        // Wrap, never overflow: Market Day up to 9 plates must fit on the
+        // narrowest screen, so they flow onto extra rows instead of leaving
+        // unreachable apples outside the viewport.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             repeat(itemsShown) { item ->
                 val inTapped = item in tapped
