@@ -1,6 +1,7 @@
 package com.vividoai.numberlings.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -147,6 +149,31 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
         }
 
         if (frame == PuzzleFrame.SHOWING) {
+            fun answer(index: Int) {
+                val right = index == task.correctIndex
+                GameHub.repository.record(task.skill, right)
+                if (right) {
+                    GameHub.sound.poke()
+                    encouraged = false
+                    friendMood = Mood.CHEER
+                    moodTick++
+                    solvedInBlock++
+                    if (solvedInBlock >= 6) {
+                        val stickerIndex = GameHub.repository.finishBlockForSticker()
+                        if (StickerAlbum.isMarketDay(stickerIndex)) {
+                            celebrateBlock(stickerIndex)
+                        } else {
+                            frame = PuzzleFrame.AFTER_WORK
+                        }
+                    } else {
+                        preparePuzzle()
+                    }
+                } else {
+                    GameHub.sound.maybe()
+                    encouraged = true
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,54 +181,57 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                 contentAlignment = Alignment.Center
             ) {
                 PuzzleArt(task.visual, Modifier.fillMaxSize())
+                if (task.tapTheGroups) {
+                    // No buttons: the two drawn groups ARE the answers, wrapped
+                    // in soft meadow-colored outlines. A child points before
+                    // they can read.
+                    Column(Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .border(3.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(24.dp))
+                                .clickable { answer(0) }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .border(3.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(24.dp))
+                                .clickable { answer(1) }
+                        )
+                    }
+                }
             }
             Text(task.prompt, style = MaterialTheme.typography.titleLarge, color = Cocoa)
             OutlinedButton(onClick = {
                 if (GameHub.repository.settingsNow().narration) GameHub.speaker.say(task.spoken)
             }) { Text("Again, please") }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                task.choices.chunked(2).forEach { pair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        pair.forEach { choice ->
-                            OutlinedButton(
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    val index = task.choices.indexOf(choice)
-                                    val right = index == task.correctIndex
-                                    GameHub.repository.record(task.skill, right)
-                                    if (right) {
-                                        GameHub.sound.poke()
-                                        encouraged = false
-                                        friendMood = Mood.CHEER
-                                        moodTick++
-                                        solvedInBlock++
-                                        if (solvedInBlock >= 6) {
-                                            val stickerIndex = GameHub.repository.finishBlockForSticker()
-                                            if (StickerAlbum.isMarketDay(stickerIndex)) {
-                                                celebrateBlock(stickerIndex)
-                                            } else {
-                                                frame = PuzzleFrame.AFTER_WORK
-                                            }
-                                        } else {
-                                            preparePuzzle()
-                                        }
-                                    } else {
-                                        GameHub.sound.maybe()
-                                        encouraged = true
-                                    }
+            if (!task.tapTheGroups) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    task.choices.chunked(2).forEach { pair ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            pair.forEach { choice ->
+                                OutlinedButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { answer(task.choices.indexOf(choice)) }
+                                ) {
+                                    Text(choice.label, style = MaterialTheme.typography.headlineMedium)
                                 }
-                            ) {
-                                Text(choice.label, style = MaterialTheme.typography.headlineMedium)
                             }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }

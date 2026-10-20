@@ -80,14 +80,17 @@ object TaskFactory {
         var b = r.nextIntFrom(1, cap = 13)
         if (b == a) b = a + if (r.nextBoolean()) 1 else -2
         b = b.coerceAtLeast(1)
-        val answerLabel = if (askFewer) "Smaller group" else "Bigger group"
+        // No label buttons here: the child taps the group they can see.
+        // Top group holds `a`, bottom group holds `b`.
+        val answerIsTop = if (askFewer) a < b else a > b
         return Task(
             skill = SkillKind.COMPARE, tier = tier,
-            prompt = "Which group has ${if (askFewer) "fewer" else "more"}?",
+            prompt = "Tap the group with ${if (askFewer) "fewer" else "more"}.",
             visual = TaskVisual(kind = VisualKind.DIFFERENCE, left = a, right = b),
-            choices = listOf(Choice("more", "Bigger group"), Choice("fewer", "Smaller group")),
-            correctIndex = if (answerLabel == "Bigger group") 0 else 1,
-            spoken = "Two groups of things. Tap the one with ${if (askFewer) "fewer" else "more"}."
+            choices = listOf(Choice("top", "Top group"), Choice("bottom", "Bottom group")),
+            correctIndex = if (answerIsTop) 0 else 1,
+            spoken = "Two groups of things. Tap the one with ${if (askFewer) "fewer" else "more"}.",
+            tapTheGroups = true
         )
     }
 
