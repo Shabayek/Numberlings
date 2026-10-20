@@ -35,6 +35,12 @@ object UnlockStore {
 
     private var client: BillingClient? = null
 
+    /**
+     * Called once a purchase is really made, so the app can open every meadow
+     * for good. Nothing else grants it.
+     */
+    var onPurchased: (() -> Unit)? = null
+
     private val purchasesListener = PurchasesUpdatedListener { result, purchases ->
         if (result.responseCode == BillingClient.BillingResponseCode.OK) {
             purchases?.forEach { purchase ->
@@ -44,6 +50,7 @@ object UnlockStore {
                             .setPurchaseToken(purchase.purchaseToken)
                             .build()
                     ) { }
+                    onPurchased?.invoke()
                 }
             }
         }

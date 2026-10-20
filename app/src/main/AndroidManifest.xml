@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Deliberate: no INTERNET permission. Nothing leaves the device. -->
+    <!-- Deliberate: no INTERNET permission. The Play Billing library adds one
+         while merging, so it is stripped again here — the shipped package
+         matches the promise made to families, and the app makes no network
+         calls of its own. (If a future Play Billing release insists on it,
+         see STORE_READY.md before shipping.) -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
 
     <application
         android:allowBackup="true"

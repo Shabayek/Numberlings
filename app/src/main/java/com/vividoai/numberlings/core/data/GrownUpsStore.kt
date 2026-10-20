@@ -24,9 +24,12 @@ data class GrownUps(
     /** -1..+1 puzzle difficulty nudge for accessibility (SkillScore.tier). */
     val bias: Int = 0,
     /** First-run welcome: shown once, skipped on every return (never re-gated). */
-    val onboarded: Boolean = false
+    val onboarded: Boolean = false,
+    /** The family owns every meadow: bought, or given by the Community Unlock. */
+    val meadowsUnlocked: Boolean = false
 ) {
-    val rateFloat: Float get() = (0.5f + voiceSpeed * 0.1f)
+    /** 5 → 0.5x (slowest, warmest), 15 → 1.5x (quickest) narration pace. */
+    val rateFloat: Float get() = 0.5f + (voiceSpeed - 5) * 0.1f
 }
 
 private val Context.store: DataStore<Preferences> by preferencesDataStore(name = "grownups")
@@ -41,6 +44,7 @@ class GrownUpsStore(private val context: Context) {
         val cap = intPreferencesKey("session_cap")
         val bias = intPreferencesKey("bias")
         val onboarded = booleanPreferencesKey("onboarded")
+        val meadowsUnlocked = booleanPreferencesKey("meadows_unlocked")
     }
 
     val flow: Flow<GrownUps> = context.store.data.map { p ->
@@ -51,7 +55,8 @@ class GrownUpsStore(private val context: Context) {
             voiceSpeed = p[Keys.voice] ?: 9,
             sessionCapMinutes = p[Keys.cap] ?: 12,
             bias = p[Keys.bias] ?: 0,
-            onboarded = p[Keys.onboarded] ?: false
+            onboarded = p[Keys.onboarded] ?: false,
+            meadowsUnlocked = p[Keys.meadowsUnlocked] ?: false
         )
     }
 
@@ -64,6 +69,7 @@ class GrownUpsStore(private val context: Context) {
             p[Keys.cap] = next.sessionCapMinutes
             p[Keys.bias] = next.bias
             p[Keys.onboarded] = next.onboarded
+            p[Keys.meadowsUnlocked] = next.meadowsUnlocked
         }
     }
 }

@@ -3,37 +3,48 @@ package com.vividoai.numberlings.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
+import com.vividoai.numberlings.core.data.BlockFinish
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.ui.grownups.GrownUpsGate
 import com.vividoai.numberlings.ui.grownups.GrownUpsHome
+import com.vividoai.numberlings.ui.puzzle.Mood
+import com.vividoai.numberlings.ui.puzzle.Numberling
 import com.vividoai.numberlings.ui.screens.MarketDayScreen
 import com.vividoai.numberlings.ui.screens.OnboardingScreen
 import com.vividoai.numberlings.ui.screens.SleepyInvitation
 import com.vividoai.numberlings.ui.screens.StickerAlbumScreen
 import com.vividoai.numberlings.ui.screens.TaskScreen
 import com.vividoai.numberlings.ui.screens.VillageScreen
+import com.vividoai.numberlings.ui.theme.Cocoa
 import com.vividoai.numberlings.ui.theme.Paper
 import kotlinx.coroutines.delay
 
-/** Where we are. A small, closed world of four places: village, puzzle, sleep, grown-ups. */
+/** Where we are. A small, closed world of places: village, puzzle, market, album, grown-ups. */
 sealed interface Destination {
     data object Village : Destination
     data class MeadowPlay(val meadow: Meadow) : Destination
-    data class MarketDay(val stickerIndex: Int) : Destination
+    data class MarketDay(val finish: BlockFinish) : Destination
     data object Album : Destination
     data object GrownUps : Destination
     data object GrownUpsHome : Destination
-    data object Sleeping : Destination
 }
 
 /**
@@ -45,21 +56,39 @@ sealed interface Destination {
 fun AppRoot() {
     var destination by remember { mutableStateOf<Destination>(Destination.Village) }
     var sleepy by remember { mutableStateOf(false) }
+    /** Bumped whenever the child asks for "a few more", so the rest timer
+     *  starts a fresh interval instead of never firing again. */
+    var restRound by remember { mutableIntStateOf(0) }
     val settingsOrNull by GameHub.repository.settings.collectAsState(initial = null)
 
-    // One soft cream beat while settings load from the device — no flash of
-    // the welcome for returning families.
+    // A soft, branded beat while the settings load from the device — a child
+    // never faces a blank screen.
     val settings = settingsOrNull ?: run {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Paper)
-        )
+                .background(Paper),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Numberling(
+                    modifier = Modifier.size(112.dp),
+                    mood = Mood.HAPPY,
+                    body = com.vividoai.numberlings.ui.theme.Leaf
+                )
+                Text(
+                    "Numberlings",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Cocoa
+                )
+            }
+        }
         return
     }
 
-    // Wellbeing: after the grown-up-set number of minutes the village invites rest.
-    LaunchedEffect(settings.sessionCapMinutes) {
+    // Wellbeing: after the grown-up-set number of minutes the village invites
+    // rest. Asking for "a few more" re-arms the clock for another interval.
+    LaunchedEffect(settings.sessionCapMinutes, restRound) {
         if (settings.sessionCapMinutes <= 0) return@LaunchedEffect
         delay(settings.sessionCapMinutes * 60_000L)
         sleepy = true
@@ -76,7 +105,10 @@ fun AppRoot() {
             if (sleepy) {
                 SleepyInvitation(
                     onRest = { sleepy = false },
-                    onPlayMore = { sleepy = false }
+                    onPlayMore = {
+                        sleepy = false
+                        restRound++
+                    }
                 )
             } else if (!settings.onboarded) {
                 OnboardingScreen(
@@ -94,13 +126,13 @@ fun AppRoot() {
         is Destination.MeadowPlay -> TaskScreen(
             meadow = where.meadow,
             onBack = { destination = Destination.Village },
-            celebrateBlock = { stickerIndex ->
-                destination = Destination.MarketDay(stickerIndex)
+            celebrateBlock = { finish ->
+                destination = Destination.MarketDay(finish)
             }
         )
 
         is Destination.MarketDay -> MarketDayScreen(
-            stickerIndex = where.stickerIndex,
+            finish = where.finish,
             onDone = { destination = Destination.Village }
         )
 
@@ -116,11 +148,6 @@ fun AppRoot() {
 
         Destination.GrownUpsHome -> GrownUpsHome(
             backToPlay = { destination = Destination.Village }
-        )
-
-        Destination.Sleeping -> SleepyInvitation(
-            onRest = { destination = Destination.Village },
-            onPlayMore = { destination = Destination.Village }
         )
     }
 }

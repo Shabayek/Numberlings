@@ -32,14 +32,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
+import com.vividoai.numberlings.core.data.BlockFinish
+import com.vividoai.numberlings.core.data.DeviceNotes
 import com.vividoai.numberlings.core.engine.Curriculum
 import com.vividoai.numberlings.core.engine.TaskFactory
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.core.model.SkillKind
-import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.Task
 import com.vividoai.numberlings.ui.puzzle.Mood
 import com.vividoai.numberlings.ui.puzzle.Numberling
@@ -59,23 +61,39 @@ private fun nextSkillFor(meadow: Meadow, seed: Long): SkillKind {
 }
 
 @Composable
-fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit) {
-    var seed by remember { mutableStateOf(Random.nextLong()) }
+fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish) -> Unit) {
+    val context = LocalContext.current
+    val notes = remember { DeviceNotes(context) }
+    // A block in progress survives a restart: the child never has to start the
+    // six dots over again because the app was closed.
+    val restored = remember(meadow) { notes.blockProgress(meadow) }
+
+    var seed by remember { mutableStateOf(restored?.second ?: Random.nextLong()) }
     var skill by remember { mutableStateOf(nextSkillFor(meadow, seed)) }
-    var solvedInBlock by remember { mutableIntStateOf(0) }
+    var solvedInBlock by remember { mutableIntStateOf(restored?.first ?: 0) }
     var frame by remember { mutableStateOf(PuzzleFrame.SHOWING) }
     var biasAndTier by remember { mutableIntStateOf(0) }
     var encouraged by remember { mutableStateOf(false) }
     var friendMood by remember { mutableStateOf(Mood.HAPPY) }
     var moodTick by remember { mutableIntStateOf(0) }
+    var wrongTick by remember { mutableIntStateOf(0) }
+    var wrongRecorded by remember { mutableStateOf(false) }
+    /** One tap is one attempt: a burst of taps can never score the next puzzle. */
+    var accepting by remember { mutableStateOf(false) }
+
+    fun tierForNow(): Int {
+        val bias = GameHub.repository.settingsNow().bias
+        return (GameHub.repository.adaptive.value.tierFor(skill) + bias).coerceIn(0, 2)
+    }
 
     fun preparePuzzle() {
         seed = seed + 7
         skill = nextSkillFor(meadow, seed)
-        val bias = GameHub.repository.settingsNow().bias
-        biasAndTier = (GameHub.repository.adaptive.value.tierFor(skill) + bias).coerceIn(0, 2)
+        biasAndTier = tierForNow()
         encouraged = false
         friendMood = Mood.HAPPY
+        wrongRecorded = false
+        notes.saveBlockProgress(meadow, solvedInBlock, seed)
     }
 
     // The friend warms back to rest after cheering or wobbling.
@@ -86,7 +104,14 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
         }
     }
 
-    LaunchedEffect(Unit) { preparePuzzle() }
+    LaunchedEffect(Unit) {
+        if (restored != null) {
+            // Pick up exactly where the child left off, same puzzle and all.
+            biasAndTier = tierForNow()
+        } else {
+            preparePuzzle()
+        }
+    }
 
     val task: Task = remember(skill, biasAndTier, seed) {
         TaskFactory.make(skill, biasAndTier, (seed * 31) + 7)
@@ -97,6 +122,22 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
     LaunchedEffect(task) {
         if (GameHub.repository.settingsNow().narration) {
             GameHub.speaker.say(task.spoken)
+        }
+        // A short pause before the first tap is answerable, so a hurried
+        // double tap cannot land on the puzzle that follows.
+        delay(350)
+        accepting = true
+    }
+
+    // Every wrong attempt gets its own kind word, and the puzzle opens again
+    // for another try.
+    LaunchedEffect(wrongTick) {
+        if (wrongTick > 0) {
+            if (GameHub.repository.settingsNow().narration) {
+                GameHub.speaker.say("Let's count together.")
+            }
+            delay(500)
+            accepting = true
         }
     }
 
@@ -153,18 +194,21 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
 
         if (frame == PuzzleFrame.SHOWING) {
             fun answer(index: Int) {
+                if (!accepting) return
+                accepting = false
                 val right = index == task.correctIndex
-                GameHub.repository.record(task.skill, right)
                 if (right) {
+                    GameHub.repository.record(task.skill, true)
                     GameHub.sound.poke()
                     encouraged = false
                     friendMood = Mood.CHEER
                     moodTick++
                     solvedInBlock++
                     if (solvedInBlock >= 6) {
-                        val stickerIndex = GameHub.repository.finishBlockForSticker()
-                        if (StickerAlbum.isMarketDay(stickerIndex)) {
-                            celebrateBlock(stickerIndex)
+                        notes.clearBlockProgress(meadow)
+                        val finish = GameHub.repository.finishBlock()
+                        if (finish.marketDay) {
+                            celebrateBlock(finish)
                         } else {
                             frame = PuzzleFrame.AFTER_WORK
                         }
@@ -172,8 +216,15 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                         preparePuzzle()
                     }
                 } else {
+                    // One wobble per puzzle is enough to note: retrying the same
+                    // puzzle must not keep costing the child their progress.
+                    if (!wrongRecorded) {
+                        wrongRecorded = true
+                        GameHub.repository.record(task.skill, false)
+                    }
                     GameHub.sound.maybe()
                     encouraged = true
+                    wrongTick++
                 }
             }
 
@@ -251,9 +302,6 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (Int) -> Unit
                         "Not quite yet — the Numberlings will count it together with you.",
                         color = Cocoa
                     )
-                    if (GameHub.repository.settingsNow().narration) {
-                        LaunchedEffect(task) { GameHub.speaker.say("Let's count together.") }
-                    }
                 }
             }
         } else {

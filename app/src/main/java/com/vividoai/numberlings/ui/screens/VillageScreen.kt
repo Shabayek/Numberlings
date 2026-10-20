@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
+import com.vividoai.numberlings.core.data.GrownUps
 import com.vividoai.numberlings.core.engine.Curriculum
 import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.ui.puzzle.MeadowArt
@@ -42,6 +43,10 @@ import com.vividoai.numberlings.ui.theme.MeadowColors
 fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGrownUps: () -> Unit) {
     val blocks by GameHub.repository.blocksCompleted.collectAsState()
     val hearts by GameHub.repository.hearts.collectAsState()
+    val grownUps by GameHub.repository.settings.collectAsState(initial = GrownUps())
+    // A family that owns the meadows (bought, or given by the Community
+    // Unlock) has every meadow open — the promise is kept, not just printed.
+    val allOpen = grownUps.meadowsUnlocked
 
     Column(
         modifier = Modifier
@@ -76,7 +81,7 @@ fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGr
         Spacer(Modifier.height(2.dp))
 
         Meadow.entries.forEachIndexed { index, meadow ->
-            val unlocked = blocks >= unlockBarrier(index)
+            val unlocked = allOpen || blocks >= unlockBarrier(index)
             val accent = MeadowColors[index % MeadowColors.size]
             Card(
                 colors = CardDefaults.cardColors(
@@ -107,6 +112,12 @@ fun VillageScreen(openMeadow: (Meadow) -> Unit, openStickers: () -> Unit, openGr
             if (!unlocked) {
                 Text("Sleeping quietly until ${unlockBarrier(index)} puzzles wake the village.", color = CocoaSoft)
             }
+        }
+        if (allOpen) {
+            Text(
+                "Every meadow is open — the whole village is yours.",
+                color = CocoaSoft
+            )
         }
         Spacer(Modifier.height(24.dp))
     }

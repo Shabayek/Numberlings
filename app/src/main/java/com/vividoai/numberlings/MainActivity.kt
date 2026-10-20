@@ -20,8 +20,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        GameHub.shutter()
-        super.onDestroy()
-    }
+    // The narrator lives as long as the process: shutting it down with the
+    // activity would leave the app silent for good after any recreation.
 }

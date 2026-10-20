@@ -32,7 +32,10 @@ enum class SkillKind {
 data class SkillScore(val skill: SkillKind, val mastery: Double = 0.0) {
     operator fun plus(correct: Boolean): SkillScore {
         val target = if (correct) 1.0 else 0.0
-        val next = mastery + (target - mastery) * LearningRate
+        // A wobble costs a little, never a lot: one exploratory tap is not a
+        // failure, so the child can try again without being punished for it.
+        val rate = if (correct) LearningRate else WrongRate
+        val next = mastery + (target - mastery) * rate
         return SkillScore(skill, next.coerceIn(0.0, 1.0))
     }
 
@@ -45,5 +48,8 @@ data class SkillScore(val skill: SkillKind, val mastery: Double = 0.0) {
 
     companion object {
         const val LearningRate = 0.18
+
+        /** A wrong tap is worth a soft nudge, not a landslide. */
+        const val WrongRate = 0.06
     }
 }

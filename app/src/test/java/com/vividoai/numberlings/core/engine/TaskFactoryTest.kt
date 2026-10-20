@@ -1,6 +1,8 @@
 package com.vividoai.numberlings.core.engine
 
+import com.vividoai.numberlings.core.model.PuzzleLimits
 import com.vividoai.numberlings.core.model.SkillKind
+import com.vividoai.numberlings.core.model.VisualKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,5 +62,33 @@ class TaskFactoryTest {
         // Sharing is exact.
         val shared = TaskFactory.make(SkillKind.SHARE_EVEN, 1, seed = 3)
         assertEquals(0, shared.visual.left % shared.visual.parts)
+    }
+
+    @Test
+    fun `counting never asks for more than the picture can show`() {
+        for (tier in 0..2) {
+            for (seed in 1L..60L) {
+                val task = TaskFactory.make(SkillKind.COUNT, tier, seed)
+                assertTrue(
+                    "seed=$seed tier=$tier asked for ${task.visual.left}",
+                    task.visual.left <= PuzzleLimits.MAX_COUNTED
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `the missing addend is never drawn for the child to count`() {
+        for (tier in 0..2) {
+            for (seed in 1L..40L) {
+                val task = TaskFactory.make(SkillKind.ADD_MISSING, tier, seed)
+                assertEquals(
+                    "the unknown amount must not be pictured",
+                    VisualKind.PARTIAL_JOIN,
+                    task.visual.kind
+                )
+                assertEquals("only the known group is drawn", 0, task.visual.right)
+            }
+        }
     }
 }

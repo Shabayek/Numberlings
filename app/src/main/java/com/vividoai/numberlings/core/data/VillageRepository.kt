@@ -8,15 +8,25 @@ import com.vividoai.numberlings.core.model.SkillKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+
+/** What one finished puzzle block brought: a heart, and sometimes Market Day. */
+data class BlockFinish(
+    /** Every fifth block the stall keeper opens the market. */
+    val marketDay: Boolean,
+    /** The sticker to hand over, or -1 when the album is complete. */
+    val stickerIndex: Int,
+    /** True when every sticker is already earned. */
+    val albumFull: Boolean
+)
+
 /** Village notebook: one repository class owning Room + GrownUpsStore + our adaptive state. */
 class VillageRepository(context: Context) {
 
@@ -48,19 +58,36 @@ class VillageRepository(context: Context) {
         persistSnapshot()
     }
 
-    /** One puzzle block done: heart up, load the day's determinstic sticker. */
-    fun finishBlockForSticker(): Int {
+    /**
+     * One puzzle block done: heart up, and — every fifth block — a Market Day
+     * with the next sticker the album is still missing. A sticker the child
+     * already owns is never handed over twice.
+     */
+    fun finishBlock(): BlockFinish {
         _hearts.value += 1
         _blocksCompleted.value += 1
-        val stickerIndex = StickerAlbum.indexFor(_blocksCompleted.value)
+        val blocks = _blocksCompleted.value
+        val marketDay = StickerAlbum.isMarketDay(blocks)
+        val stickerIndex = if (marketDay) StickerAlbum.nextUnowned(_stickers.value) else -1
         persistSnapshot()
-        return stickerIndex
+        return BlockFinish(
+            marketDay = marketDay,
+            stickerIndex = stickerIndex,
+            albumFull = marketDay && stickerIndex < 0
+        )
     }
 
-    /** Market Day hands over the earned sticker — the only way one is granted. */
-    fun grantSticker(index: Int) {
+    /**
+     * Market Day hands over the earned sticker — the only way one is granted.
+     * Returns false when the album already held that sticker, so the app never
+     * says "is yours" about something the child had long ago.
+     */
+    fun grantSticker(index: Int): Boolean {
+        if (index < 0 || index >= StickerAlbum.TOTAL) return false
+        if (index in _stickers.value) return false
         _stickers.value = _stickers.value + index
         persistSnapshot()
+        return true
     }
 
     init {
@@ -86,6 +113,22 @@ class VillageRepository(context: Context) {
         grownups.flow.onEach { loaded ->
             currentSettings = loaded
         }.launchIn(scope)
+
+        // One writer, one queue: snapshots are saved in the order they
+        // happened, so the notebook never ends up holding an older moment.
+        scope.launch {
+            for (snapshot in saveQueue) {
+                val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
+                database.progressDao().upsert(
+                    latest.copy(
+                        masteryCsv = snapshot.mastery,
+                        stickersCsv = snapshot.stickers,
+                        hearts = snapshot.hearts,
+                        blocksCompleted = snapshot.blocks
+                    )
+                )
+            }
+        }
     }
 
     fun setGrownUps(next: GrownUps) {
@@ -99,31 +142,37 @@ class VillageRepository(context: Context) {
         setGrownUps(currentSettings.copy(onboarded = true))
     }
 
-    private fun persistSnapshot() {
-        // Capture the moment plainly: the values are read here, on the caller's
-        // thread, so an old coroutine can never overwrite a newer answer with
-        // yesterday's numbers. Writes are serialized so their order follows
-        // the calls.
-        val mastery = adaptive.value.toCsv()
-        val stickers = _stickers.value.sorted().joinToString(",")
-        val hearts = _hearts.value
-        val blocks = _blocksCompleted.value
-        scope.launch {
-            saveMutex.withLock {
-                val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
-                database.progressDao().upsert(
-                    latest.copy(
-                        masteryCsv = mastery,
-                        stickersCsv = stickers,
-                        hearts = hearts,
-                        blocksCompleted = blocks
-                    )
-                )
-            }
-        }
+    /**
+     * The family owns every meadow — bought once, or given by the Community
+     * Unlock. It is remembered on this device and opens every meadow for good.
+     */
+    fun unlockAllMeadows() {
+        setGrownUps(currentSettings.copy(meadowsUnlocked = true))
     }
 
-    private val saveMutex = Mutex()
+    private fun persistSnapshot() {
+        // Capture the moment plainly: the values are read here, on the caller's
+        // thread, so an old write can never overwrite a newer answer with
+        // yesterday's numbers. The snapshots then travel through one queue to
+        // one writer, so they are also saved in the order they happened.
+        saveQueue.trySend(
+            Snapshot(
+                mastery = adaptive.value.toCsv(),
+                stickers = _stickers.value.sorted().joinToString(","),
+                hearts = _hearts.value,
+                blocks = _blocksCompleted.value
+            )
+        )
+    }
+
+    private data class Snapshot(
+        val mastery: String,
+        val stickers: String,
+        val hearts: Int,
+        val blocks: Int
+    )
+
+    private val saveQueue = Channel<Snapshot>(Channel.UNLIMITED)
 
     suspend fun exportCsv(): String = withContext(Dispatchers.IO) {
         val latest = database.progressDao().current() ?: return@withContext ""

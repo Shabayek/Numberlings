@@ -21,6 +21,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,6 +47,20 @@ fun GrownUpsHome(backToPlay: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val grownUps by GameHub.repository.settings.collectAsState(initial = GrownUps())
+
+    // A finished purchase opens the meadows for good, on this device.
+    DisposableEffect(Unit) {
+        UnlockStore.onPurchased = { GameHub.repository.unlockAllMeadows() }
+        onDispose { UnlockStore.onPurchased = null }
+    }
+
+    /** Say it now: the newest message replaces the last one instead of queueing. */
+    fun say(text: String) {
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            snackbar.showSnackbar(text)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -114,16 +129,31 @@ fun GrownUpsHome(backToPlay: () -> Unit) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Unlock all six meadows", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    stringResource(R.string.unlock_blurb),
-                    color = Cocoa
-                )
-                UnlockButton(snackbar)
-                Text(stringResource(R.string.unlock_community), color = Cocoa)
-                TextButton(onClick = {
-                    scope.launch { snackbar.showSnackbar("Community unlock applied — welcome to the whole village.") }
-                }) {
-                    Text("Apply Community unlock")
+                if (grownUps.meadowsUnlocked) {
+                    // Honest state: the meadows are open, and there is nothing
+                    // left to pay for.
+                    Text(
+                        "Every meadow is already open — bought, or given by the Community Unlock. " +
+                            "It is remembered on this device, for good.",
+                        color = Cocoa
+                    )
+                } else {
+                    Text(
+                        stringResource(R.string.unlock_blurb),
+                        color = Cocoa
+                    )
+                    UnlockButton(snackbar)
+                    Text(
+                        "The price is shown by Google Play itself when the purchase is available on this device.",
+                        color = Cocoa
+                    )
+                    Text(stringResource(R.string.unlock_community), color = Cocoa)
+                    TextButton(onClick = {
+                        GameHub.repository.unlockAllMeadows()
+                        say("Community unlock applied — every meadow in the village is open.")
+                    }) {
+                        Text("Apply Community unlock")
+                    }
                 }
             }
         }

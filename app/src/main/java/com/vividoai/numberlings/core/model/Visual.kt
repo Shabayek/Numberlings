@@ -6,7 +6,13 @@ package com.vividoai.numberlings.core.model
  */
 data class Choice(val id: String, val label: String)
 
-enum class VisualKind { OBJECTS, JOIN, TAKE_AWAY, DIFFERENCE, GROUPS_ARRAY, NUMBER_LINE, PLATES, PIZZA, SHAPES }
+enum class VisualKind {
+    OBJECTS, JOIN, TAKE_AWAY, DIFFERENCE, GROUPS_ARRAY, NUMBER_LINE, PLATES, PIZZA, SHAPES,
+
+    /** Only the known group is drawn; the unknown amount is left as an empty
+     *  space so the picture never gives the answer away. */
+    PARTIAL_JOIN
+}
 
 data class TaskVisual(
     val kind: VisualKind,
@@ -19,6 +25,8 @@ data class TaskVisual(
     /** NUMBER_LINE hop spec. */
     val from: Int = 0,
     val hops: Int = 0,
+    /** NUMBER_LINE: size of one hop, so the line can show its own steps. */
+    val step: Int = 0,
     /** PLATES shoes items evenly shared; PIZZA slice fraction p/q. */
     val parts: Int = 0,
     val outOf: Int = 0,

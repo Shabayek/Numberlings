@@ -1,6 +1,7 @@
 package com.vividoai.numberlings.core.engine
 
 import com.vividoai.numberlings.core.model.Choice
+import com.vividoai.numberlings.core.model.PuzzleLimits
 import com.vividoai.numberlings.core.model.SkillKind
 import com.vividoai.numberlings.core.model.ShapeKind
 import com.vividoai.numberlings.core.model.Task
@@ -61,7 +62,9 @@ object TaskFactory {
     // ---- meadow 1: counting --------------------------------------------------
 
     private fun count(tier: Int, seed: Long): Task {
-        val n = rnd(seed).nextUBTo(top = intArrayOf(6, 10, 20)[tier.coerceIn(0, 2)])
+        // Never ask for more things than the picture can honestly show.
+        val top = minOf(intArrayOf(6, 10, 20)[tier.coerceIn(0, 2)], PuzzleLimits.MAX_COUNTED)
+        val n = rnd(seed).nextUBTo(top = top)
         val task = Task(
             skill = SkillKind.COUNT, tier = tier,
             prompt = "Count what you see, then tap the number.",
@@ -121,7 +124,9 @@ object TaskFactory {
         return Task(
             skill = SkillKind.ADD_MISSING, tier = tier,
             prompt = "$a + ? = $total",
-            visual = TaskVisual(kind = VisualKind.JOIN, left = a, right = missing),
+            // Only the known group is pictured: the missing part stays an empty
+            // space, so the child has to work it out instead of counting it.
+            visual = TaskVisual(kind = VisualKind.PARTIAL_JOIN, left = a),
             choices = numericChoices(seed, missing, min = 1),
             correctIndex = -1,
             spoken = "$a and some more makes $total all together. How many more are needed?"
@@ -171,7 +176,7 @@ object TaskFactory {
         return Task(
             skill = SkillKind.SKIP_COUNT, tier = tier,
             prompt = "Skip count by $step — land after $hops hops.",
-            visual = TaskVisual(kind = VisualKind.NUMBER_LINE, from = 0, hops = hops * step),
+            visual = TaskVisual(kind = VisualKind.NUMBER_LINE, from = 0, hops = hops * step, step = step),
             choices = numericChoices(seed, landing, min = step),
             correctIndex = -1,
             spoken = "Hop like a frog, jumping by $step! After $hops big hops, where does the frog land?"

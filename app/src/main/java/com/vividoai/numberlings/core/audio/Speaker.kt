@@ -15,6 +15,7 @@ class Speaker(context: Context) : TextToSpeech.OnInitListener {
     private var ready = false
     private val engine = TextToSpeech(context.applicationContext, this)
 
+    /** The grown-up's chosen pace. 0.5x is the warmest, 1.5x the quickest. */
     var rate = 0.9f
         set(value) {
             field = value.coerceIn(0.5f, 1.5f)

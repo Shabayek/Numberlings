@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,28 +32,54 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.core.audio.SoundCue
+import com.vividoai.numberlings.core.data.DeviceNotes
 import com.vividoai.numberlings.ui.theme.BerryDeep
 import com.vividoai.numberlings.ui.theme.Cocoa
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.random.Random
 
 /**
  * Two-step grown-up gate: a still hold, then a mental-arithmetic question.
  * Sturdy for small hands, a short warm-up for grown-ups.
+ *
+ * A grown-up who has just passed the gate is not asked to do it again for a
+ * while — the ritual belongs to the grown-up, not to the clock.
  */
 @Composable
 fun GrownUpsGate(unlocked: () -> Unit, back: () -> Unit, sound: SoundCue?) {
+    val context = LocalContext.current
+    val notes = remember { DeviceNotes(context) }
     val passed = remember { mutableStateOf(false) }
+
+    // A recent pass still counts: no ritual every time the app is opened.
+    LaunchedEffect(Unit) {
+        if (notes.gateGraceActive()) {
+            passed.value = true
+            unlocked()
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (passed.value) {
-            ChallengeStep(unlocked, back, sound)
+            ChallengeStep(
+                unlocked = {
+                    notes.markGatePassed()
+                    unlocked()
+                },
+                back = back,
+                sound = sound
+            )
         } else {
             HoldStep(lockDone = { passed.value = true }, back, sound)
         }
@@ -74,6 +101,10 @@ private fun HoldStep(lockDone: () -> Unit, back: () -> Unit, sound: SoundCue?) {
             fill = 1f
             sound?.poke()
             lockDone()
+        } else {
+            // Released early: the ring empties, so it never shows progress
+            // that is not happening.
+            fill = 0f
         }
     }
 
@@ -128,9 +159,21 @@ private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCu
     val seed = remember { System.currentTimeMillis() }
     val question = remember(seed) { GateQuestion.generate(seed) }
     var typed by remember { mutableStateOf("") }
-    var shaky by remember { mutableStateOf(false) }
+    var wobble by remember { mutableFloatStateOf(0f) }
+    var wrong by remember { mutableStateOf(false) }
+
+    // A gentle side-to-side nudge when the answer is not right, so a grown-up
+    // can see that nothing happened instead of guessing.
+    LaunchedEffect(wobble) {
+        if (wobble > 0f) {
+            delay(320)
+            wobble = 0f
+        }
+    }
+    val nudge = if (wobble > 0f) sin(wobble * 18f) * 12f * wobble else 0f
 
     Column(
+        modifier = Modifier.offset { IntOffset(nudge.roundToInt(), 0) },
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -141,11 +184,21 @@ private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCu
         androidx.compose.material3.Text(question.text, style = MaterialTheme.typography.headlineMedium)
         OutlinedTextField(
             value = typed,
-            onValueChange = { typed = it },
+            onValueChange = {
+                typed = it
+                if (wrong) wrong = false
+            },
             label = { androidx.compose.material3.Text("Answer") },
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true
         )
+        if (wrong) {
+            androidx.compose.material3.Text(
+                "Not quite — try again.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = BerryDeep
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = {
                 if (question.isRight(typed)) {
@@ -153,6 +206,8 @@ private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCu
                     unlocked()
                 } else {
                     sound?.maybe()
+                    wrong = true
+                    wobble = 1f
                 }
             }) {
                 androidx.compose.material3.Text(

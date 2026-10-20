@@ -11,7 +11,7 @@
     <string name="unlock_community">If a one-time price is hard for your family right now, tap Community Unlock — it opens everything, no questions asked.</string>
     <string name="privacy_summary">
         Numberlings is made for children, so it is built on a few promises.\n\n
-        1. Nothing is collected. The app has no internet permission, so progress, settings and drawings never leave this device.\n\n
+        1. Nothing is collected. The app has no internet permission and makes no network requests of its own, so progress, settings and drawings never leave this device. (The optional one-time purchase is handled inside the Google Play Store app, not by Numberlings.)\n\n
         2. No accounts, no chat, no sharing, no ads, no tracking.\n\n
         3. Buying is a grown-up task: the shop lives behind a parent gate and offers one single purchase.\n\n
         4. Every reward is earned by practising — never bought and never random.\n\n

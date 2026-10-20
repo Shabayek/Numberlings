@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
+import com.vividoai.numberlings.core.data.BlockFinish
 import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.ui.puzzle.Mood
 import com.vividoai.numberlings.ui.puzzle.Numberling
@@ -55,11 +56,13 @@ private fun stickerColor(index: Int): Color = when (StickerAlbum.meadow(index)) 
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
-    val target = 3 + (stickerIndex % 5)
+fun MarketDayScreen(finish: BlockFinish, onDone: () -> Unit) {
+    val stickerIndex = finish.stickerIndex
+    val target = 3 + (if (stickerIndex >= 0) stickerIndex else 0) % 5
     val itemsShown = target + 2
     val tapped = remember { mutableStateListOf<Int>() }
     var granted by remember { mutableStateOf(false) }
+    var alreadyYours by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -96,7 +99,7 @@ fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(if (inTapped) stickerColor(stickerIndex) else CocoaSoft.copy(alpha = 0.28f))
+                        .background(if (inTapped) stickerColor(stickerIndex.coerceAtLeast(0)) else CocoaSoft.copy(alpha = 0.28f))
                         .clickable {
                             GameHub.sound.poke()
                             if (inTapped) tapped.remove(item) else tapped.add(item)
@@ -119,7 +122,13 @@ fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
                 Button(onClick = {
                     if (tapped.size == target) {
                         GameHub.sound.yes()
-                        GameHub.repository.grantSticker(stickerIndex)
+                        // Only say "is yours" when the album really grew.
+                        val added = if (stickerIndex >= 0) {
+                            GameHub.repository.grantSticker(stickerIndex)
+                        } else {
+                            false
+                        }
+                        alreadyYours = !added && stickerIndex >= 0
                         granted = true
                     } else {
                         GameHub.sound.maybe()
@@ -131,7 +140,15 @@ fun MarketDayScreen(stickerIndex: Int, onDone: () -> Unit) {
             Card {
                 Column(Modifier.padding(20.dp)) {
                     Text(
-                        "Thank you! Sticker ${stickerIndex + 1} of ${StickerAlbum.TOTAL} is yours.",
+                        when {
+                            stickerIndex < 0 ->
+                                "Your album is complete — all ${StickerAlbum.TOTAL} stickers are yours. " +
+                                    "The stall keeper has nothing left to give but a smiling face."
+                            alreadyYours ->
+                                "This one was already in your album — it stays yours, and always will."
+                            else ->
+                                "Thank you! Sticker ${stickerIndex + 1} of ${StickerAlbum.TOTAL} is yours."
+                        },
                         color = Cocoa
                     )
                 }
