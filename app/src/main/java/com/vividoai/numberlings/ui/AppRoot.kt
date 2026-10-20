@@ -1,5 +1,6 @@
 package com.vividoai.numberlings.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,6 +63,12 @@ fun AppRoot() {
         if (settings.sessionCapMinutes <= 0) return@LaunchedEffect
         delay(settings.sessionCapMinutes * 60_000L)
         sleepy = true
+    }
+
+    // The hardware back button belongs to the same closed world: from any
+    // place other than the village it leads home instead of leaving the app.
+    BackHandler(enabled = destination != Destination.Village) {
+        destination = Destination.Village
     }
 
     when (val where = destination) {

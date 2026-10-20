@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.vividoai.numberlings.core.model.ShapeKind
 import com.vividoai.numberlings.core.model.TaskVisual
 import com.vividoai.numberlings.core.model.VisualKind
+import com.vividoai.numberlings.ui.theme.Cocoa
 import com.vividoai.numberlings.ui.theme.Leaf
 import com.vividoai.numberlings.ui.theme.Rose
 import com.vividoai.numberlings.ui.theme.Sky
@@ -202,22 +203,48 @@ private fun DrawScope.drawPlates(things: Int, plates: Int) {
     }
     val perPlate = things / plates
     val leftovers = things % plates
-    if (leftovers == 0) drawCakesEven(plates, perPlate)
+    if (perPlate > 0) drawCakesEven(plates, perPlate)
+    // What nobody got is drawn above, plainly, in cocoa — so the art agrees
+    // with the question instead of leaving hungry plates.
+    if (leftovers > 0) drawLeftovers(leftovers)
 }
 
 private fun DrawScope.drawCakesEven(plates: Int, perPlate: Int) {
+    val rows = if (perPlate <= 3) 1 else 2
+    val columns = (perPlate + rows - 1) / rows
+    val plateRadius = size.minDimension / 6f
+    val cakeRadius = min(
+        size.minDimension / 26f,
+        plateRadius / (columns * 1.4f)
+    ).coerceAtLeast(size.minDimension / 60f)
     for (plate in 0 until plates) {
         val plateX = size.width * (plate + 1) / (plates + 1f)
-        repeat(perPlate) { cakeIndex ->
+        for (cakeIndex in 0 until perPlate) {
+            val row = cakeIndex / columns
+            val inRow = (if (row == rows - 1) perPlate - row * columns else columns).coerceAtLeast(1)
+            val column = cakeIndex % columns
+            val dx = (column - (inRow - 1) / 2f) * cakeRadius * 2.4f
+            val dy = (row - (rows - 1) / 2f) * cakeRadius * 2.6f
             drawCircle(
                 color = Rose,
-                radius = size.minDimension / 26f,
-                center = Offset(
-                    plateX + cos(cakeIndex * 3f) * size.minDimension / 40f,
-                    size.height * 0.72f + sin(cakeIndex * 3f) * size.minDimension / 40f
-                )
+                radius = cakeRadius,
+                center = Offset(plateX + dx, size.height * 0.72f + dy)
             )
         }
+    }
+}
+
+private fun DrawScope.drawLeftovers(count: Int) {
+    val cakeRadius = size.minDimension / 30f
+    for (cakeIndex in 0 until count) {
+        drawCircle(
+            color = Cocoa,
+            radius = cakeRadius,
+            center = Offset(
+                size.width / 2f + (cakeIndex - (count - 1) / 2f) * cakeRadius * 2.6f,
+                size.height * 0.28f
+            )
+        )
     }
 }
 

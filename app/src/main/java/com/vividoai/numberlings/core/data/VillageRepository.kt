@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 /** Village notebook: one repository class owning Room + GrownUpsStore + our adaptive state. */
 class VillageRepository(context: Context) {
@@ -62,19 +64,24 @@ class VillageRepository(context: Context) {
     }
 
     init {
-        database.progressDao().observe().onEach { entity ->
+        // Fresh start: read the village in once. During play the memory above
+        // is the truth — the database writes are its snapshots. Listening to
+        // every row change here would let a stale write win and quietly
+        // un-earn a heart or a finished block.
+        scope.launch {
+            val entity = database.progressDao().current()
             if (entity == null) {
                 // First run: a blank, kind village.
                 database.progressDao().upsert(ProgressEntity(masteryCsv = ""))
-                return@onEach
+            } else {
+                _hearts.value = entity.hearts
+                _blocksCompleted.value = entity.blocksCompleted
+                _stickers.value = entity.stickersCsv.split(",")
+                    .mapNotNull { it.trim().toIntOrNull() }
+                    .toSet()
+                adaptive.value = adaptive.value.fromCsv(entity.masteryCsv)
             }
-            _hearts.value = entity.hearts
-            _blocksCompleted.value = entity.blocksCompleted
-            _stickers.value = entity.stickersCsv.split(",")
-                .mapNotNull { it.trim().toIntOrNull() }
-                .toSet()
-            adaptive.value = adaptive.value.fromCsv(entity.masteryCsv)
-        }.launchIn(scope)
+        }
 
         grownups.flow.onEach { loaded ->
             currentSettings = loaded
@@ -93,18 +100,30 @@ class VillageRepository(context: Context) {
     }
 
     private fun persistSnapshot() {
+        // Capture the moment plainly: the values are read here, on the caller's
+        // thread, so an old coroutine can never overwrite a newer answer with
+        // yesterday's numbers. Writes are serialized so their order follows
+        // the calls.
+        val mastery = adaptive.value.toCsv()
+        val stickers = _stickers.value.sorted().joinToString(",")
+        val hearts = _hearts.value
+        val blocks = _blocksCompleted.value
         scope.launch {
-            val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
-            database.progressDao().upsert(
-                latest.copy(
-                    masteryCsv = adaptive.value.toCsv(),
-                    stickersCsv = _stickers.value.sorted().joinToString(","),
-                    hearts = _hearts.value,
-                    blocksCompleted = _blocksCompleted.value
+            saveMutex.withLock {
+                val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
+                database.progressDao().upsert(
+                    latest.copy(
+                        masteryCsv = mastery,
+                        stickersCsv = stickers,
+                        hearts = hearts,
+                        blocksCompleted = blocks
+                    )
                 )
-            )
+            }
         }
     }
+
+    private val saveMutex = Mutex()
 
     suspend fun exportCsv(): String = withContext(Dispatchers.IO) {
         val latest = database.progressDao().current() ?: return@withContext ""

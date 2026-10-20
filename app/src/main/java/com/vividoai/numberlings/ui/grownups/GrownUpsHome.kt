@@ -54,7 +54,19 @@ fun GrownUpsHome(backToPlay: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Grown-ups zone", style = MaterialTheme.typography.headlineMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Grown-ups zone",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = backToPlay) {
+                Text("Back to play")
+            }
+        }
 
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

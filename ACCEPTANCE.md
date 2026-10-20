@@ -34,6 +34,67 @@
 10. Session cap 5 min → rest card appears after ~5 minutes and never forces anything.
 11. `gradle test` → engine tests green (see `app/src/test`). **(verified locally)**
 
+## Night verification run — 2026-10-20 (v0.9.9-sources + fixes)
+All flows below were executed live on the same emulator (API 37). State at the end
+of the run: blocks 61, hearts 4, stickers 3 of 30 (slots 5/10/25), all six meadows
+awake via Community unlock, narration ON, sleep cap 12 min — all persisted.
+
+1. **System back never leaves the child's world anymore.** Hardware back from a
+   meadow block, from the sticker album and from the Grown-ups zone all return to
+   the village; system back from the village itself still exits normally. Found and
+   fixed during this run: back exited the whole app from any non-village
+   destination (added `BackHandler` in `AppRoot.kt`), and `GrownUpsHome` never
+   wired its `backToPlay` callback, leaving the "Back to play" path dead (added the
+   header TextButton). **(emulator-verified: screenshots from both destinations)**
+2. **Welcome-story replay works from settings.** Toggling "Replay the welcome
+   story" then "Back to play" lands on story page 1 of 3; completing all three
+   pages returns to the village with progress untouched and the toggle OFF again.
+   **(emulator-verified end-to-end)**
+3. **Heart/block progress race — found late, fixed, retested.** A completed block
+   granted "one more heart", but the village header still read `hearts 3 ·
+   puzzles 60`; instrumented logs caught the cause: the Room observer echoed every
+   persisted row straight back into memory, so a stale snapshot write could
+   clobber the freshly earned heart/block (and late persist coroutines made the
+   final DB row stale too). Fix in `VillageRepository.kt`: the database is read
+   **once** at startup, in-memory state is the truth during play, snapshot values
+   are captured on the caller's thread at call time, and writes are serialized
+   with a `Mutex`. Retested: full block → `hearts 4 · puzzles 61` on the map,
+   "Hearts earned: 4 — puzzle blocks: 61" in the grown-ups zone, and the row on
+   disk (`hearts=4, blocksCompleted=61`, mastery grown) survives a force-stop +
+   relaunch including WAL replay. **(emulator-verified)**
+4. **Sleep invitation, both paths.** With the cap at its tested value the
+   invitation fires on schedule ("The village is getting sleepy. Your meadows will
+   still be here later — no rush, ever."). "A few more puzzles, please" returns to
+   the village; "Sweet dreams — see you soon" also returns to the village — no
+   lockout, no forced exit, no shaming. Nothing navigates the child out of the
+   book (the unused `Destination.Sleeping` route presents the same invitation).
+   **(emulator-verified)**
+5. **Share progress intent fires.** "Share progress with a grown-up" opens the
+   system share sheet pre-filled with "Numberlings progress" + the skill mastery
+   CSV (`skill,mastery_percent`, 0,96 / 1,95 / … matching on-device mastery). No
+   crash without accounts configured. **(emulator-verified)**
+6. **Narration toggle verified both ways.** With narration ON, entering a meadow
+   triggers TTS synthesis (visible in logcat); with it OFF, entering a meadow is
+   completely silent. Toggle restored to ON afterwards. **(emulator-verified via
+   logcat)**
+7. **Wrong answer → heart cost confirmed live:** map header moved 4 → 3 after one
+   wrong answer; mid-block exit afterwards preserved both progress numbers.
+   **(emulator-verified)**
+8. **Sticker album display-only by design** (waiting for Market Day slots to
+   fill); tapping a sticker currently gives no visual/audio feedback — noted below
+   as a polish item, not a defect.
+
+### Minor observations, cosmetic / polish (no action taken at this pass)
+- First launch after install/rebuild holds a blank cream beat ~4–6 s (splash +
+  DataStore init) before the village draws; subsequent launches are faster.
+- Times Orchard's faint square boxes behind the leaf clusters are intentional
+  placeholder art (see ASSETS.md), reading as gentle texture rather than a glitch.
+- "Fraction Forest & Shape Shire" is a long card title; it wraps slightly snug on
+  narrow cards but never truncates or overflows.
+- The sleep timer counts one continuous composer lifetime; choosing "A few more
+  puzzles, please" does not re-arm a fresh countdown — acceptable for now (the
+  invitation is advisory, not a lock), recorded here for honesty.
+
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release
   (`UnlockStore.billingConfigured`); until then the Community Unlock always works.
