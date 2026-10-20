@@ -95,6 +95,36 @@ awake via Community unlock, narration ON, sleep cap 12 min — all persisted.
   puzzles, please" does not re-arm a fresh countdown — acceptable for now (the
   invitation is advisory, not a lock), recorded here for honesty.
 
+## External review fix pass — 2026-10-21
+An independent adversarial review (see `REVIEW.md`: 1 Critical, 5 Major, 8 Minor,
+7 Polish) was carried out against this build. **All 21 findings are now fixed
+and re-verified on a freshly wiped emulator** (`NumberlingsTest` AVD). The
+headlines:
+
+- **The pictures no longer lie.** The counting artwork used to cap at 18 objects
+  while the engine could ask for 19 or 20 — an unwinnable puzzle inside the
+  app's own core skill. The layout is now derived from the count itself
+  (`CountLayout`), shared by the engine and the artwork, so every number asked
+  for is drawn; 16/17/18/19-dot pictures were counted by hand on the device.
+- **No picture gives the answer away any more.** The missing-addend task draws
+  only the known group plus one empty slot; the take-away picture shows the
+  whole starting set; the sharing picture shows the treats waiting and empty
+  plates.
+- **The sticker economy works.** Market Day hands over the next *missing*
+  sticker, so "Sticker 1 of 30" and then "Sticker 2 of 30" really land in the
+  album (the old code promised a sticker it silently dropped).
+- **The grown-up controls do what they say.** Sound level, soft sound effects
+  and voice pace now reach the audio layer; the Community Unlock and a finished
+  purchase really open every meadow; the gate shows "Not quite — try again";
+  a grown-up who just passed the gate is not asked again for 30 minutes.
+- **The promise matches the package.** The shipped APK no longer requests the
+  INTERNET permission (the Play Billing library added it at merge time; it is
+  now stripped), and the privacy text describes exactly what ships.
+- **Kindness, measured.** One wrong tap now costs a soft nudge instead of a
+  landslide, and retrying the same puzzle costs nothing extra; a double tap
+  can no longer score the next puzzle; a block in progress survives a restart;
+  the rest invitation comes back if the child asks for "a few more".
+
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release
   (`UnlockStore.billingConfigured`); until then the Community Unlock always works.

@@ -52,6 +52,26 @@ parent gate) → ESRB E / PEGI 3 expected.
 4. Verify Data Safety answers + Families declaration in Play Console.
 5. Confirm "sleep invitation" setting reaches the play screen on a fresh install.
 
+### A note on the INTERNET permission (changed 2026-10-21)
+The Play Billing library adds `android.permission.INTERNET` (and
+`ACCESS_NETWORK_STATE`) to the **merged** manifest, so the shipped package used
+to ask for internet access even though Numberlings never uses it. The app
+manifest now strips it again:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+```
+
+Verified on the installed package: `dumpsys package com.vividoai.numberlings`
+lists only BILLING, ACCESS_NETWORK_STATE and the internal receiver permission.
+The purchase itself is completed by the **Google Play Store app** on the
+device — Numberlings only talks to it locally, so nothing needs the internet.
+
+> **If a future Play Billing release refuses to work without INTERNET** (it
+> checks connectivity before showing the sheet), remove that one line from
+> `app/src/main/AndroidManifest.xml`, rebuild, and test the purchase flow
+> before shipping. The Play Store's own network access is not affected.
+
 **Verified build numbers (this repo, JDK 17 / AGP 8.7.3):**
 - `assembleDebug` → 17.8 MB, `assembleRelease` (R8) → **1.49 MB** unsigned APK.
 - Release build passes `lintVital` (Play submission lint gate).

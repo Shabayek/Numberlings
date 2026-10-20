@@ -1,5 +1,10 @@
 # Numberlings — External Adversarial Review
 
+> **Addendum — 2026-10-21: all 21 findings fixed and re-verified on device.**
+> The report below is kept as written — it is the evidence of what was found.
+> The fix-and-verification log for every finding is in **§6 "Fix pass"** at the
+> end of this file. Severity labels are unchanged.
+
 **Package:** `com.vividoai.numberlings`  ·  **Build reviewed:** `app-debug.apk` built from HEAD (`36ccc02`), reinstalled on the device before the final test pass
 **Device:** Android emulator `Medium_Phone_API_37.0` (1080×2400, API 37), gesture navigation
 **Method:** black-box UI driving via `adb` (taps, swipes, key events) + white-box source audit + DB/DataStore pulls as ground truth. No app source was modified.
@@ -465,3 +470,46 @@ Legend: **DONE** = exercised on the device; **N/A** = not applicable to this bui
 - **Not observable from `adb`:** `ToneGenerator` output and TTS speech itself. Findings F-03 and F-08 are therefore marked code-level for the audio half; their persistence halves are live-verified.
 - **Severity is calibrated to this product:** a pre-reader maths game. A puzzle that cannot be solved by the method the app teaches is Critical; a promise the app cannot keep is Major; friction and inconsistency are Minor/Polish.
 - **No app source was modified** during this review; only `REVIEW.md` is added to the repository.
+
+---
+
+## 6. Fix pass — 2026-10-21 (every finding fixed, then re-verified on device)
+
+**Device used:** a dedicated, freshly wiped AVD (`NumberlingsTest`, Android 37,
+1080×2400) so the verification ran away from other work on the machine.
+**Build:** `assembleDebug` from the fix commit; `testDebugUnitTest` green.
+**Evidence:** screenshots `v5_*.png` and the database pulls quoted below.
+
+| # | Severity | Fix (where) | Re-verified on device |
+|---|----------|-------------|-------------------------|
+| F-01 | Critical | The pile layout is now derived from the count itself (`CountLayout` in `core/model/PuzzleLimits.kt`, shared by `PuzzleArt` and `TaskFactory`), so every number the engine asks for is drawn, in as many rows as it needs; `TaskFactory.count` is capped by the same `PuzzleLimits.MAX_COUNTED`. | Pictures of 16, 17, 18 and 19 dots were counted by hand: each matches one of the offered numbers (`v5_count4`, `v5_count6`, `v5_count7`, `v5_b1`, `v5_b3`, `v5_b5`). New unit tests: *counting never asks for more than the picture can show*, *every count the picture can be asked for fits on the paper*. |
+| F-02 | Major | `StickerAlbum.nextUnowned(owned)` hands out the next **missing** sticker; Market Day is decided by the block count; `grantSticker()` returns whether it really added; the card says "is yours" only when the album grew, "already yours" otherwise, and "your album is complete" when all 30 are earned. | Two Market Days in a row: *"Thank you! Sticker 1 of 30 is yours."* then *"Sticker 2 of 30 is yours."*; album *"Earned so far: 2 of 30"*; DB `stickersCsv='0,1'`, `blocksCompleted=10`. |
+| F-03 | Major | `GameHub.wire()` now collects the settings flow and calls `apply()`, so the knobs actually reach the audio layer; `SoundCue` rebuilds its synthesiser when the level changes (a `ToneGenerator` keeps the volume it was born with) and stays silent at 0; the pace mapping now matches the range the speaker supports. | The zone shows **0.9x voice** by default (it claimed 1.4x from a formula the speaker clamped away); narration is silent with narration off and speaks with it on (logcat `GoogleTTSServiceImpl`); toggles/sliders survive a restart. *The sound itself is not audible from `adb` — that half is code-level, as in the original report.* |
+| F-04 | Major | A new `meadowsUnlocked` setting is persisted on the device; `unlockAllMeadows()` sets it; the Community button calls it, a finished Play purchase calls it too (`UnlockStore.onPurchased`); the village opens every meadow when it is set — and says so. | Fresh install → *Apply Community unlock* → the card reads *"Every meadow is already open…"*, all six meadows open, the village says *"Every meadow is open — the whole village is yours."*; still true after a force-stop + relaunch. |
+| F-05 | Major | The manifest strips the merged permission at build time (`tools:node="remove"`), with a comment saying why; the privacy text now describes exactly what ships. | `dumpsys package com.vividoai.numberlings` → requested permissions: BILLING, ACCESS_NETWORK_STATE, internal receiver — **no INTERNET**. |
+| F-06 | Major | The missing-addend task gets its own visual (`PARTIAL_JOIN`): only the known group is drawn, plus one dashed empty slot with a plus; the take-away picture shows the whole starting set with the leaving ones faded (no separate remainder pile); the sharing picture shows the treats waiting and **empty** plates. | *"8 + ? = 10"* draws exactly 8 dots + an empty slot; *"5 berries, 2 friends — berries left over?"* draws 5 berries + 2 empty plates (`v5_missing_addend`, `v5_share2`). |
+| F-07 | Minor | The gate says *"Not quite — try again."* and nudges the card sideways (the dead `shaky` state is gone). | 9 × 8 answered with 11 → the message appears (`v5_gate_wrong2`). |
+| F-08 | Minor | The comfort line is keyed on the attempt counter, so every miss is acknowledged. | Code-level (the effect key changed); the on-screen comfort text was confirmed to persist across two misses. |
+| F-09 | Minor | Choosing "a few more puzzles" re-arms the countdown for another full interval. | 5-minute cap: invitation at 22:30, dismissed with "A few more puzzles, please" at 22:30:28, **the invitation returned at 22:36** — a second full interval (`v5_sleep4`, `v5_sleep6`). Before the fix it never came back. |
+| F-10 | Minor | The block in progress (meadow, solved count, puzzle seed) is kept in a small local note and restored when the meadow opens again. | "solved 3" → force-stop → relaunch → the meadow reopened at **"solved 3"** on the same puzzle. |
+| F-11 | Minor | A wrong tap is worth a soft nudge (6 % instead of 18 %), and only the **first** miss on a puzzle is recorded. | One miss moved mastery 90 → 84; a second miss on the same puzzle left it at **84** (no extra cost). |
+| F-12 | Minor | The line carries its "0" start, a tick per hop, a jump arc per hop, and the number it lands on. | *"Skip count by 2 — land after 2 hops."* draws 0 → tick → tick → landing **4** (`v5_skipcount`). |
+| F-13 | Minor | A short input lock after every answer (350 ms) and after every miss (500 ms). | A double tap on the answer gave **"solved 1"** and exactly one mastery gain (84 → 87). |
+| F-14 | Minor | A grown-up who passed the gate keeps it for 30 minutes (a local note, no personal data). | Pass the gate → force-stop → relaunch → Grown-ups opens straight into the zone. |
+| F-15 | Polish | Releasing the hold button empties the ring again. | Code-level (the fill is reset when the hold stops). |
+| F-16 | Polish | The newest message replaces the one on screen. | Purchase message + Community message one second apart → the **community** message was the one on screen. |
+| F-17 | Polish | The card explains that the price comes from the Play Store, and shows the honest "already open" state when the family owns it. | Both texts seen on device. |
+| F-18 | Polish | `Destination.Sleeping` (dead code) removed. | Grep-clean. |
+| F-19 | Polish | One queue, one writer (`Channel`), so snapshots are saved in the order they happened. | Code-level; the three-way UI/flow/DB cross-check still passes after every block. |
+| F-20 | Polish | The narrator now lives as long as the process — nothing shuts it down when the activity is destroyed. | Code-level (no `onDestroy` shutdown any more). |
+| F-21 | Polish | The app draws a branded splash (the Numberling and the wordmark) while the settings load, so the child never faces an empty screen. | Fresh install shows the splash instead of a blank cream screen. |
+
+**New regression tests** (`app/src/test/.../PuzzleRulesTest.kt`, `TaskFactoryTest.kt`):
+the picture can hold every count the engine asks for; the album hands out each
+sticker exactly once and never repeats; Market Day lands on every fifth block; a
+wrong tap costs a soft nudge; the missing addend is never drawn; the voice pace
+stays inside the range the speaker supports.
+
+**Still honestly open:** the IAP itself (`billingConfigured = false` until the
+Play SKU exists), the price of that purchase, and the audio half of F-03/F-08,
+which `adb` cannot hear. Nothing else from this report is outstanding.
