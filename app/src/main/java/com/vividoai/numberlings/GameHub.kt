@@ -36,11 +36,21 @@ object GameHub {
     }
 
     fun apply(grownUps: GrownUps) {
-        if (this::speaker.isInitialized) {
-            speaker.rate = grownUps.rateFloat
+        // Audio is decoration: a missing engine or a refused sound device must
+        // never interrupt the play.
+        try {
+            if (this::speaker.isInitialized) {
+                speaker.rate = grownUps.rateFloat
+            }
+        } catch (failure: Exception) {
+            android.util.Log.w("Numberlings", "voice settings not applied", failure)
         }
-        if (this::sound.isInitialized) {
-            sound.setVolume(if (grownUps.sound) grownUps.soundVolume else 0)
+        try {
+            if (this::sound.isInitialized) {
+                sound.setVolume(if (grownUps.sound) grownUps.soundVolume else 0)
+            }
+        } catch (failure: Exception) {
+            android.util.Log.w("Numberlings", "sound settings not applied", failure)
         }
     }
 }

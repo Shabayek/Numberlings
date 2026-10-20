@@ -5,6 +5,7 @@ import com.vividoai.numberlings.core.engine.AdaptiveState
 import com.vividoai.numberlings.core.data.GrownUps
 import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.SkillKind
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,7 +31,16 @@ data class BlockFinish(
 /** Village notebook: one repository class owning Room + GrownUpsStore + our adaptive state. */
 class VillageRepository(context: Context) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /**
+     * Background work must never take the app down: a write that cannot land
+     * (a full disk, a database file replaced underneath us) is a bookkeeping
+     * problem, not a reason to close the child's session.
+     */
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, failure ->
+            android.util.Log.w("Numberlings", "background work failed", failure)
+        }
+    )
     private val database = VillageDatabase.build(context)
     private val grownups = GrownUpsStore(context)
 
@@ -96,17 +106,23 @@ class VillageRepository(context: Context) {
         // every row change here would let a stale write win and quietly
         // un-earn a heart or a finished block.
         scope.launch {
-            val entity = database.progressDao().current()
-            if (entity == null) {
-                // First run: a blank, kind village.
-                database.progressDao().upsert(ProgressEntity(masteryCsv = ""))
-            } else {
-                _hearts.value = entity.hearts
-                _blocksCompleted.value = entity.blocksCompleted
-                _stickers.value = entity.stickersCsv.split(",")
-                    .mapNotNull { it.trim().toIntOrNull() }
-                    .toSet()
-                adaptive.value = adaptive.value.fromCsv(entity.masteryCsv)
+            try {
+                val entity = database.progressDao().current()
+                if (entity == null) {
+                    // First run: a blank, kind village.
+                    database.progressDao().upsert(ProgressEntity(masteryCsv = ""))
+                } else {
+                    _hearts.value = entity.hearts
+                    _blocksCompleted.value = entity.blocksCompleted
+                    _stickers.value = entity.stickersCsv.split(",")
+                        .mapNotNull { it.trim().toIntOrNull() }
+                        .toSet()
+                    adaptive.value = adaptive.value.fromCsv(entity.masteryCsv)
+                }
+            } catch (failure: Exception) {
+                // A village we cannot read yet is still a village we can play in:
+                // the memory starts empty and the first write will create the row.
+                android.util.Log.w("Numberlings", "could not read the village yet", failure)
             }
         }
 
@@ -118,22 +134,32 @@ class VillageRepository(context: Context) {
         // happened, so the notebook never ends up holding an older moment.
         scope.launch {
             for (snapshot in saveQueue) {
-                val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
-                database.progressDao().upsert(
-                    latest.copy(
-                        masteryCsv = snapshot.mastery,
-                        stickersCsv = snapshot.stickers,
-                        hearts = snapshot.hearts,
-                        blocksCompleted = snapshot.blocks
+                try {
+                    val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
+                    database.progressDao().upsert(
+                        latest.copy(
+                            masteryCsv = snapshot.mastery,
+                            stickersCsv = snapshot.stickers,
+                            hearts = snapshot.hearts,
+                            blocksCompleted = snapshot.blocks
+                        )
                     )
-                )
+                } catch (failure: Exception) {
+                    // A write that cannot land is not worth a crash: the memory
+                    // stays the truth and the next snapshot tries again.
+                    android.util.Log.w("Numberlings", "progress write failed", failure)
+                }
             }
         }
     }
 
     fun setGrownUps(next: GrownUps) {
         scope.launch {
-            grownups.save(next)
+            try {
+                grownups.save(next)
+            } catch (failure: Exception) {
+                android.util.Log.w("Numberlings", "settings save failed", failure)
+            }
         }
     }
 
@@ -175,7 +201,12 @@ class VillageRepository(context: Context) {
     private val saveQueue = Channel<Snapshot>(Channel.UNLIMITED)
 
     suspend fun exportCsv(): String = withContext(Dispatchers.IO) {
-        val latest = database.progressDao().current() ?: return@withContext ""
+        val latest = try {
+            database.progressDao().current()
+        } catch (failure: Exception) {
+            android.util.Log.w("Numberlings", "could not read progress for sharing", failure)
+            null
+        } ?: return@withContext ""
         buildString {
             appendLine("skill,mastery_percent")
             latest.masteryCsv.split(";").forEach { pair ->

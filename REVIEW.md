@@ -1,6 +1,6 @@
 # Numberlings — External Adversarial Review
 
-> **Addendum — 2026-10-21: all 21 findings fixed and re-verified on device.**
+> **Addendum — 2026-10-21: all 22 findings fixed and re-verified on device.**
 > The report below is kept as written — it is the evidence of what was found.
 > The fix-and-verification log for every finding is in **§6 "Fix pass"** at the
 > end of this file. Severity labels are unchanged.
@@ -474,7 +474,6 @@ Legend: **DONE** = exercised on the device; **N/A** = not applicable to this bui
 ---
 
 ## 6. Fix pass — 2026-10-21 (every finding fixed, then re-verified on device)
-
 **Device used:** a dedicated, freshly wiped AVD (`NumberlingsTest`, Android 37,
 1080×2400) so the verification ran away from other work on the machine.
 **Build:** `assembleDebug` from the fix commit; `testDebugUnitTest` green.
@@ -503,6 +502,7 @@ Legend: **DONE** = exercised on the device; **N/A** = not applicable to this bui
 | F-19 | Polish | One queue, one writer (`Channel`), so snapshots are saved in the order they happened. | Code-level; the three-way UI/flow/DB cross-check still passes after every block. |
 | F-20 | Polish | The narrator now lives as long as the process — nothing shuts it down when the activity is destroyed. | Code-level (no `onDestroy` shutdown any more). |
 | F-21 | Polish | The app draws a branded splash (the Numberling and the wordmark) while the settings load, so the child never faces an empty screen. | Fresh install shows the splash instead of a blank cream screen. |
+| F-22 | Minor | Every background path is guarded: the repository's scope carries a `CoroutineExceptionHandler`, the startup read, the progress writer, the settings save and the share export all catch their failures and log them instead of throwing. A write that cannot land is a bookkeeping problem, never the end of the child's session. | The reviewer's own scenario was replayed: the database file was **replaced under the running app** and play continued (a puzzle was answered, "solved 1", no `FATAL EXCEPTION` in logcat, process alive). A hard write failure cannot be forced on-device (the open file handle keeps working), so that half rests on the guard itself. |
 
 **New regression tests** (`app/src/test/.../PuzzleRulesTest.kt`, `TaskFactoryTest.kt`):
 the picture can hold every count the engine asks for; the album hands out each
