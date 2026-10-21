@@ -17,8 +17,8 @@ Deliver exactly one document, `REVIEW.md` in the repo root, structured as:
    NOT COVERED with reason). A claim without evidence is a defect in your review.
 4. "Verified clean" list — things you stress-tested that held up, so silence never
    hides gaps.
-Commit `REVIEW.md` at the end with `-c user.name="VividoAI"
--c user.email="dev@vividoai.app"`, message prefix `external review:`. Do **not**
+Commit `REVIEW.md` at the end with the repository's configured identity
+(`VividoAI <dev@vividoai.eu>`), message prefix `external review:`. Do **not**
 modify any app source code — you are a reviewer, not the fixer. The only change you
 may commit is `REVIEW.md`.
 
