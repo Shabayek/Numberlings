@@ -16,28 +16,34 @@ class DeviceNotes(context: Context) {
 
     // ---- the block in progress ------------------------------------------------
 
-    /** Solved count and seed of the block in progress in [meadow], if any. */
-    fun blockProgress(meadow: Meadow): Pair<Int, Long>? {
+    /** Solved count, seed and last question of the block in progress, if any. */
+    fun blockProgress(meadow: Meadow): Triple<Int, Long, String>? {
         if (prefs.getString(KEY_MEADOW, null) != meadow.name) return null
         val solved = prefs.getInt(KEY_SOLVED, 0)
         val seed = prefs.getLong(KEY_SEED, 0L)
         if (solved <= 0) return null
-        return solved to seed
+        return Triple(solved, seed, prefs.getString(KEY_PROMPT, "").orEmpty())
     }
 
     /** Remember how far this block has gone, so a restart never loses it. */
-    fun saveBlockProgress(meadow: Meadow, solved: Int, seed: Long) {
+    fun saveBlockProgress(meadow: Meadow, solved: Int, seed: Long, lastQuestion: String = "") {
         prefs.edit()
             .putString(KEY_MEADOW, meadow.name)
             .putInt(KEY_SOLVED, solved)
             .putLong(KEY_SEED, seed)
+            .putString(KEY_PROMPT, lastQuestion)
             .apply()
     }
 
     /** The block is finished: nothing left to remember. */
     fun clearBlockProgress(meadow: Meadow) {
         if (prefs.getString(KEY_MEADOW, null) != meadow.name) return
-        prefs.edit().remove(KEY_MEADOW).remove(KEY_SOLVED).remove(KEY_SEED).apply()
+        prefs.edit()
+            .remove(KEY_MEADOW)
+            .remove(KEY_SOLVED)
+            .remove(KEY_SEED)
+            .remove(KEY_PROMPT)
+            .apply()
     }
 
     // ---- grown-up gate grace --------------------------------------------------
@@ -61,6 +67,7 @@ class DeviceNotes(context: Context) {
         private const val KEY_MEADOW = "block_meadow"
         private const val KEY_SOLVED = "block_solved"
         private const val KEY_SEED = "block_seed"
+        private const val KEY_PROMPT = "block_question"
         private const val KEY_GATE_AT = "gate_passed_at"
     }
 }

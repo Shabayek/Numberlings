@@ -147,6 +147,28 @@ The upgrade also exposed (and fixed) a real ordering bug: the progress writer co
 start before its queue existed, so saves were silently dropped. The queue is now
 created lazily and the writer restarts itself if it ever stops.
 
+## Fixes from the play-test report — 2026-10-21 (Fraction Forest & Shape Shire)
+Three things a child actually hit, all fixed and re-verified on the emulator:
+
+1. **"solved N" folded into a column of letters** in the Fraction Forest header:
+   the long meadow name squeezed the counter to zero width, so it wrapped one
+   letter per line. The title now takes the room it needs (two lines, with an
+   ellipsis if it must) and the counter keeps its own line.
+2. **The right answer was not accepted.** The engine was right (a new test
+   proves, for 1 200 generated pizza questions, that the offered answer always
+   matches the question and is always among the choices) — the fault was in the
+   interaction: after a wrong answer the screen locked itself for half a second,
+   so the child's immediate, correct retry was **swallowed with no feedback**
+   and the old comfort message stayed on screen, which read exactly like "the
+   app rejected my answer". A retry now works the moment the child taps it; the
+   short lock that stops one burst of taps from scoring two questions is kept
+   only for the moment a new question appears.
+3. **The same question came round again and again.** A question is now
+   identified by its words *and* its picture, and the last four questions are
+   remembered, so nothing repeats within a block or across the blocks of a
+   meadow. The pizza task also offers more than one pizza size per tier (4, 6,
+   8, 10 or 12 slices, a half or a quarter) instead of one fixed question.
+
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release
   (`UnlockStore.billingConfigured`); until then the Community Unlock always works.

@@ -235,8 +235,16 @@ object TaskFactory {
 
     private fun partition(tier: Int, seed: Long): Task {
         val r = rnd(seed)
-        val outOf = intArrayOf(4, 6, 8)[tier.coerceIn(0, 2)]
-        val askQuarters = tier >= 2 && outOf == 8 && r.nextBoolean()
+        // More than one pizza size per tier, so the meadow does not ask the
+        // very same question over and over.
+        val totals = when (tier) {
+            0 -> intArrayOf(4, 6)
+            1 -> intArrayOf(4, 6, 8)
+            else -> intArrayOf(4, 6, 8, 10, 12)
+        }
+        val outOf = totals[r.nextInt(totals.size)]
+        // A quarter is only asked when it divides the pizza into whole slices.
+        val askQuarters = outOf % 4 == 0 && r.nextInt(4) == 0
         val answer = if (askQuarters) outOf / 4 else outOf / 2
         val word = if (askQuarters) "one quarter" else "one half"
         return Task(

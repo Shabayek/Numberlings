@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.GameHub
 import com.vividoai.numberlings.core.data.BlockFinish
@@ -54,6 +55,23 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 private enum class PuzzleFrame { SHOWING, AFTER_WORK }
+
+/** How many recent questions a child should not be asked again. */
+private const val RECENT_QUESTIONS = 4
+
+/**
+ * What makes two puzzles the same question: the words plus the picture. Two
+ * shape hunts of different shapes are different questions; the same pizza
+ * question twice is not.
+ */
+private fun Task.fingerprint(): String = buildString {
+    append(prompt)
+    append('|').append(visual.kind)
+    append('|').append(visual.left).append(',').append(visual.right)
+    append('|').append(visual.rows).append(',').append(visual.cols)
+    append('|').append(visual.parts).append(',').append(visual.outOf)
+    append('|').append(visual.shape)
+}
 
 private fun nextSkillFor(meadow: Meadow, seed: Long): SkillKind {
     val skills = Curriculum.meadowSkills[meadow] ?: return SkillKind.COUNT
@@ -80,20 +98,39 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
     var wrongRecorded by remember { mutableStateOf(false) }
     /** One tap is one attempt: a burst of taps can never score the next puzzle. */
     var accepting by remember { mutableStateOf(false) }
+    /** The questions we asked recently, so none of them comes round again. */
+    var recentFingerprints by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    fun tierForNow(): Int {
+    fun tierForNow(target: SkillKind): Int {
         val bias = GameHub.repository.settingsNow().bias
-        return (GameHub.repository.adaptive.value.tierFor(skill) + bias).coerceIn(0, 2)
+        return (GameHub.repository.adaptive.value.tierFor(target) + bias).coerceIn(0, 2)
     }
 
     fun preparePuzzle() {
-        seed = seed + 7
-        skill = nextSkillFor(meadow, seed)
-        biasAndTier = tierForNow()
+        // Keep asking until the question is one this child has not just seen:
+        // the same puzzle again and again feels broken, even when the numbers
+        // differ. A question is identified by its words *and* its picture, so
+        // two shape hunts of different shapes still count as different.
+        var nextSeed = seed + 7
+        var nextSkill = nextSkillFor(meadow, nextSeed)
+        var nextTier = tierForNow(nextSkill)
+        var candidate = TaskFactory.make(nextSkill, nextTier, (nextSeed * 31) + 7)
+        var tries = 0
+        while (candidate.fingerprint() in recentFingerprints && tries < 10) {
+            nextSeed += 7
+            nextSkill = nextSkillFor(meadow, nextSeed)
+            nextTier = tierForNow(nextSkill)
+            candidate = TaskFactory.make(nextSkill, nextTier, (nextSeed * 31) + 7)
+            tries++
+        }
+        seed = nextSeed
+        skill = nextSkill
+        biasAndTier = nextTier
+        recentFingerprints = (recentFingerprints + candidate.fingerprint()).takeLast(RECENT_QUESTIONS)
         encouraged = false
         friendMood = Mood.HAPPY
         wrongRecorded = false
-        notes.saveBlockProgress(meadow, solvedInBlock, seed)
+        notes.saveBlockProgress(meadow, solvedInBlock, seed, candidate.fingerprint())
     }
 
     // The friend warms back to rest after cheering or wobbling.
@@ -107,7 +144,8 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
     LaunchedEffect(Unit) {
         if (restored != null) {
             // Pick up exactly where the child left off, same puzzle and all.
-            biasAndTier = tierForNow()
+            biasAndTier = tierForNow(skill)
+            recentFingerprints = listOf(restored.third)
         } else {
             preparePuzzle()
         }
@@ -125,19 +163,17 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
         }
         // A short pause before the first tap is answerable, so a hurried
         // double tap cannot land on the puzzle that follows.
-        delay(350)
+        delay(250)
         accepting = true
     }
 
-    // Every wrong attempt gets its own kind word, and the puzzle opens again
-    // for another try.
+    // Every wrong attempt gets its own kind word. The child may try again
+    // straight away — a retry is never swallowed.
     LaunchedEffect(wrongTick) {
         if (wrongTick > 0) {
             if (GameHub.repository.settingsNow().narration) {
                 GameHub.speaker.say("Let's count together.")
             }
-            delay(500)
-            accepting = true
         }
     }
 
@@ -166,9 +202,24 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
             Spacer(Modifier.width(10.dp))
             OutlinedButton(onClick = onBack) { Text("Back") }
             Spacer(Modifier.width(10.dp))
-            Text(meadow.title, fontWeight = FontWeight.Bold, color = accent)
-            Spacer(Modifier.weight(1f))
-            Text("solved $solvedInBlock", color = Cocoa)
+            // The title takes the room it needs (a long meadow name may wrap
+            // onto two lines); the counter keeps its own line and never folds
+            // into a column of letters.
+            Text(
+                meadow.title,
+                fontWeight = FontWeight.Bold,
+                color = accent,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "solved $solvedInBlock",
+                color = Cocoa,
+                maxLines = 1,
+                softWrap = false
+            )
         }
 
         // Six dots: how far this block has wandered. A pre-reader can watch
@@ -195,9 +246,11 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
         if (frame == PuzzleFrame.SHOWING) {
             fun answer(index: Int) {
                 if (!accepting) return
-                accepting = false
                 val right = index == task.correctIndex
                 if (right) {
+                    // Locked until the next puzzle has settled, so one burst of
+                    // taps can only ever answer one question.
+                    accepting = false
                     GameHub.repository.record(task.skill, true)
                     GameHub.sound.poke()
                     encouraged = false
@@ -217,7 +270,8 @@ fun TaskScreen(meadow: Meadow, onBack: () -> Unit, celebrateBlock: (BlockFinish)
                     }
                 } else {
                     // One wobble per puzzle is enough to note: retrying the same
-                    // puzzle must not keep costing the child their progress.
+                    // puzzle must not keep costing the child their progress, and
+                    // the next tap must work straight away.
                     if (!wrongRecorded) {
                         wrongRecorded = true
                         GameHub.repository.record(task.skill, false)
