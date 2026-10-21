@@ -1,6 +1,7 @@
 package com.vividoai.numberlings.core.engine
 
 import com.vividoai.numberlings.core.model.SkillKind
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -33,20 +34,30 @@ class ProgressReportTest {
         assertFalse(report.contains("The missing number"))
 
         // the totals in plain words
-        assertTrue(report.contains("Hearts earned"))
         assertTrue(report.contains("Hearts earned .............. 20"))
         assertTrue(report.contains("Puzzle blocks finished .... 20"))
         assertTrue(report.contains("Stickers collected ......... 3 of 30"))
 
-        // the machine-readable tail is still there, and in a stable order
-        assertTrue(report.contains("skill_id,skill,mastery_percent"))
-        assertTrue(report.contains("0,Counting,99"))
-        assertTrue(report.contains("hearts,20"))
-        assertTrue(report.contains("blocks_completed,20"))
-        val ids = report.lines()
-            .filter { it.matches(Regex("^\\d+,.*,\\d+$")) }
-            .map { it.substringBefore(",").toInt() }
-        assertTrue("skill ids should be in order", ids == ids.sorted())
+        // no raw data dump anywhere
+        assertFalse(report.contains("skill_id"))
+        assertFalse(report.contains("mastery_percent"))
+        assertFalse(report.contains("blocks_completed"))
+    }
+
+    @Test
+    fun `the sticker album explains itself`() {
+        val report = ProgressReport.render(sample, hearts = 20, blocks = 20, stickers = setOf(4, 9, 24))
+
+        // how a sticker is earned
+        assertTrue(report.contains("A sticker is earned at every Market Day"))
+        assertTrue(report.contains("every five finished blocks"))
+
+        // which slots, said out loud, and the album drawn slot by slot
+        assertTrue(report.contains("5, 10 and 25"))
+        val rows = report.lines().filter { it.trim().startsWith("[") }
+        assertEquals(2, rows.size)
+        assertEquals(30, rows.sumOf { row -> row.count { it == '[' } })
+        assertEquals(3, rows.sumOf { row -> row.count { it == 'x' } })
     }
 
     @Test
@@ -59,6 +70,6 @@ class ProgressReportTest {
         )
         assertTrue(report.contains("Counting Meadow"))
         assertFalse(report.contains("Comparing groups"))
-        assertFalse(report.contains("STICKERS"))
+        assertFalse(report.contains("THE STICKER ALBUM"))
     }
 }

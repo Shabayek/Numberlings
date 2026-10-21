@@ -54,8 +54,8 @@ object ProgressReport {
         out.appendLine("nothing was bought, and nothing is sent anywhere except by you,")
         out.appendLine("right now, in this message.")
         out.appendLine()
-        out.appendLine("THE SHORT VERSION")
-        out.appendLine("-----------------")
+        out.appendLine("AT A GLANCE")
+        out.appendLine("-----------")
         out.appendLine("  Puzzle blocks finished .... $blocks")
         out.appendLine("  Hearts earned .............. $hearts")
         out.appendLine("  Stickers collected ......... ${stickers.size} of $stickerTotal")
@@ -83,29 +83,51 @@ object ProgressReport {
         }
 
         if (stickers.isNotEmpty()) {
-            out.appendLine("STICKERS")
-            out.appendLine("--------")
+            out.appendLine("THE STICKER ALBUM")
+            out.appendLine("------------------")
+            out.appendLine("A sticker is earned at every Market Day, and a Market Day comes after")
+            out.appendLine("every five finished blocks of puzzles (at the market the child counts")
+            out.appendLine("out the exact number of apples the stall keeper asks for).")
+            out.appendLine("The album has 30 slots - one for each sticker the child can collect.")
+            out.appendLine()
             out.appendLine(
-                "  Collected slots: " +
-                    stickers.sorted().joinToString(", ") { (it + 1).toString() } +
-                    "  (of $stickerTotal)"
+                "  Filled so far: ${stickers.size} of $stickerTotal " +
+                    "(${slotWord(stickers.size)} ${slotsAsWords(stickers)})."
             )
+            out.appendLine()
+            out.appendLine("  The album, slot by slot:")
+            out.appendLine()
+            albumStrip(stickers, stickerTotal).forEach { out.appendLine("    $it") }
             out.appendLine()
         }
 
-        out.appendLine("FOR THE RECORD")
-        out.appendLine("--------------")
-        out.appendLine("skill_id,skill,mastery_percent")
-        for (skill in SkillKind.entries) {
-            val percent = masteryPercent[skill] ?: continue
-            out.appendLine("${skill.ordinal},${labelOf(skill)},$percent")
-        }
-        out.appendLine("hearts,$hearts")
-        out.appendLine("blocks_completed,$blocks")
-        if (stickers.isNotEmpty()) {
-            out.appendLine("sticker_slots,${stickers.sorted().joinToString(",") { (it + 1).toString() }}")
-        }
-
+        out.appendLine()
+        out.appendLine("That is everything Numberlings knows about this child. The numbers live")
+        out.appendLine("only on this device; this message is the one copy leaving it.")
         return out.toString().trimEnd() + "\n"
+    }
+
+    /** "5, 10 and 25" - a list a reader can say out loud. */
+    private fun slotsAsWords(stickers: Set<Int>): String {
+        val slots = stickers.sorted().map { it + 1 }
+        return when (slots.size) {
+            0 -> "none yet"
+            1 -> slots[0].toString()
+            2 -> "${slots[0]} and ${slots[1]}"
+            else -> slots.dropLast(1).joinToString(", ") + " and " + slots.last()
+        }
+    }
+
+    /** "slot" or "slots", depending on how many. */
+    private fun slotWord(count: Int): String = if (count == 1) "slot" else "slots"
+
+    /** The 30-slot album, drawn so the parent can see it at a glance. */
+    private fun albumStrip(stickers: Set<Int>, stickerTotal: Int): List<String> {
+        val perRow = 15
+        return (0 until stickerTotal).chunked(perRow).map { row ->
+            row.joinToString(" ") { slot ->
+                if (slot in stickers) "[x]" else "[ ]"
+            }
+        }
     }
 }

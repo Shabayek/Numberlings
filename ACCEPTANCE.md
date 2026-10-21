@@ -175,8 +175,10 @@ Three things a child actually hit, all fixed and re-verified on the emulator:
    bare CSV of skill ids (`0,99`, `1,99`, …) that no parent could read. The
    shared text now opens with a plain explanation of what the numbers are,
    gives the totals in words, lists every skill the child has met by name and
-   grouped under its meadow, and ends with a short machine-readable section for
-   anyone who wants the figures as data.
+   grouped under its meadow, **explains how stickers are earned and draws the
+   30-slot album so the collected slots are obvious**, and closes by saying
+   that this message is the one copy leaving the device. The machine-readable
+   tail has been removed — it was the least friendly part of the report.
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release
