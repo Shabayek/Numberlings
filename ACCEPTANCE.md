@@ -168,6 +168,9 @@ Three things a child actually hit, all fixed and re-verified on the emulator:
    remembered, so nothing repeats within a block or across the blocks of a
    meadow. The pizza task also offers more than one pizza size per tier (4, 6,
    8, 10 or 12 slices, a half or a quarter) instead of one fixed question.
+4. **The grown-up's rejected answer is now offered for replacing** instead of
+   being appended to: the field selects its contents when it is tapped, and a
+   rejected answer stays selected so the next thing typed swaps it out.
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

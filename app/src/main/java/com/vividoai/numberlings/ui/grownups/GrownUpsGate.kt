@@ -3,6 +3,8 @@ package com.vividoai.numberlings.ui.grownups
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -31,9 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.vividoai.numberlings.core.audio.SoundCue
@@ -158,9 +163,23 @@ fun RoundHoldButton(holding: Boolean, fill: Float, onHoldStart: () -> Unit, onHo
 private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCue?) {
     val seed = remember { System.currentTimeMillis() }
     val question = remember(seed) { GateQuestion.generate(seed) }
-    var typed by remember { mutableStateOf("") }
+    var typed by remember { mutableStateOf(TextFieldValue()) }
     var wobble by remember { mutableFloatStateOf(0f) }
     var wrong by remember { mutableStateOf(false) }
+    /** After a rejected answer, the next tap offers the old text for replacing. */
+    var replaceOnNextPress by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+
+    // A tap that lands on a rejected answer must not quietly collapse the
+    // selection and start appending behind it.
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release && replaceOnNextPress) {
+                replaceOnNextPress = false
+                typed = typed.copy(selection = TextRange(0, typed.text.length))
+            }
+        }
+    }
 
     // A gentle side-to-side nudge when the answer is not right, so a grown-up
     // can see that nothing happened instead of guessing.
@@ -190,7 +209,15 @@ private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCu
             },
             label = { androidx.compose.material3.Text("Answer") },
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true
+            singleLine = true,
+            interactionSource = interactionSource,
+            modifier = Modifier.onFocusChanged { state ->
+                // Tapping into the field offers the whole old answer for
+                // replacing, so a grown-up never has to delete it by hand.
+                if (state.isFocused && typed.text.isNotEmpty()) {
+                    typed = typed.copy(selection = TextRange(0, typed.text.length))
+                }
+            }
         )
         if (wrong) {
             androidx.compose.material3.Text(
@@ -201,13 +228,17 @@ private fun ChallengeStep(unlocked: () -> Unit, back: () -> Unit, sound: SoundCu
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = {
-                if (question.isRight(typed)) {
+                if (question.isRight(typed.text)) {
                     sound?.yes()
                     unlocked()
                 } else {
                     sound?.maybe()
                     wrong = true
                     wobble = 1f
+                    // The rejected answer is offered for replacing, so the
+                    // next thing typed swaps it out instead of following it.
+                    replaceOnNextPress = true
+                    typed = typed.copy(selection = TextRange(0, typed.text.length))
                 }
             }) {
                 androidx.compose.material3.Text(
