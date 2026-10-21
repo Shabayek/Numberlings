@@ -187,6 +187,14 @@ Three things a child actually hit, all fixed and re-verified on the emulator:
    and *Clear all progress…* (hearts, blocks, skills and stickers — the
    settings and the meadow unlock stay). Both ask for confirmation first and
    say plainly that it cannot be undone.
+7. **"Sweet dreams — see you soon" now says goodnight properly.** It used to
+   drop the child straight back into the village. It now shows a short, warm
+   word about sleep being part of learning (the brain sorting and keeping what
+   was practised) and about a phone being a classroom rather than a toy box,
+   then offers two honest ways out: **Exit** (the app closes) and **Learn
+   something new** (back to the village, with the rest timer re-armed). The
+   sleepy friend says the goodnight in the slow bedtime voice, and tapping it
+   says it again.
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

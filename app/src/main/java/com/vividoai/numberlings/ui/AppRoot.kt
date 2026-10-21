@@ -1,6 +1,7 @@
 package com.vividoai.numberlings.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import com.vividoai.numberlings.ui.puzzle.Numberling
 import com.vividoai.numberlings.ui.screens.MarketDayScreen
 import com.vividoai.numberlings.ui.screens.OnboardingScreen
 import com.vividoai.numberlings.ui.screens.SleepyInvitation
+import com.vividoai.numberlings.ui.screens.GoodnightScreen
 import com.vividoai.numberlings.ui.screens.StickerAlbumScreen
 import com.vividoai.numberlings.ui.screens.TaskScreen
 import com.vividoai.numberlings.ui.screens.VillageScreen
@@ -56,9 +58,12 @@ sealed interface Destination {
 fun AppRoot() {
     var destination by remember { mutableStateOf<Destination>(Destination.Village) }
     var sleepy by remember { mutableStateOf(false) }
+    /** The end of a session: the goodnight word, then exit or learn more. */
+    var goodnight by remember { mutableStateOf(false) }
     /** Bumped whenever the child asks for "a few more", so the rest timer
      *  starts a fresh interval instead of never firing again. */
     var restRound by remember { mutableIntStateOf(0) }
+    val activity = LocalActivity.current
     val settingsOrNull by GameHub.repository.settings.collectAsState(initial = null)
 
     // A soft, branded beat while the settings load from the device — a child
@@ -102,20 +107,28 @@ fun AppRoot() {
 
     when (val where = destination) {
         Destination.Village -> {
-            if (sleepy) {
-                SleepyInvitation(
-                    onRest = { sleepy = false },
+            when {
+                goodnight -> GoodnightScreen(
+                    onExit = { activity?.finish() },
+                    onLearnMore = {
+                        goodnight = false
+                        restRound++
+                    }
+                )
+                sleepy -> SleepyInvitation(
+                    onRest = {
+                        sleepy = false
+                        goodnight = true
+                    },
                     onPlayMore = {
                         sleepy = false
                         restRound++
                     }
                 )
-            } else if (!settings.onboarded) {
-                OnboardingScreen(
+                !settings.onboarded -> OnboardingScreen(
                     onDone = { destination = Destination.Village }
                 )
-            } else {
-                VillageScreen(
+                else -> VillageScreen(
                     openMeadow = { meadow -> destination = Destination.MeadowPlay(meadow) },
                     openStickers = { destination = Destination.Album },
                     openGrownUps = { destination = Destination.GrownUps }

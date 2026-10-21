@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +33,80 @@ import com.vividoai.numberlings.ui.theme.Leaf
 import com.vividoai.numberlings.ui.theme.Paper
 
 private val goodnight = "The meadows are resting now. Sweet dreams, little friend. We will be here tomorrow, rain or shine."
+
+/**
+ * The words of the goodnight, in one place so the screen and its test cannot
+ * drift apart.
+ */
+object Goodnight {
+    const val HEADLINE = "Rest is part of learning."
+
+    const val MESSAGE =
+        "While you rest, your brain sorts and keeps everything you practised " +
+            "today - that is what makes tomorrow's puzzles feel easier.\n\n" +
+            "And this little phone is a classroom, not a toy box: a few happy " +
+            "minutes of learning, and then it goes quiet so the real day can begin."
+
+    const val EXIT = "Exit"
+    const val LEARN = "Learn something new"
+
+    /** The bedtime-voice version, slower and warmer than the usual narration. */
+    const val SPOKEN =
+        "Sleep is part of learning, little friend. Your brain sorts and keeps " +
+            "what you practised today while you rest. Sweet dreams."
+}
+
+/**
+ * The end of a session: a quiet word about sleeping and about what a phone is
+ * for, then two honest choices - close the app, or come back and learn
+ * something new. Never a dead end.
+ */
+@Composable
+fun GoodnightScreen(onExit: () -> Unit, onLearnMore: () -> Unit) {
+    val settings by GameHub.repository.settings.collectAsState(initial = GrownUps())
+
+    LaunchedEffect(settings.narration) {
+        if (settings.narration) GameHub.speaker.say(Goodnight.SPOKEN, slow = true)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Paper)
+            .verticalScroll(rememberScrollState())
+            .padding(28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Numberling(
+            modifier = Modifier
+                .size(140.dp)
+                .clickable {
+                    if (settings.narration) GameHub.speaker.say(Goodnight.SPOKEN, slow = true)
+                },
+            mood = Mood.SLEEPY,
+            body = Leaf
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            Goodnight.HEADLINE,
+            style = MaterialTheme.typography.headlineMedium,
+            color = Cocoa,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            Goodnight.MESSAGE,
+            style = MaterialTheme.typography.bodyLarge,
+            color = CocoaSoft,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(28.dp))
+        Button(onClick = onExit) { Text(Goodnight.EXIT) }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(onClick = onLearnMore) { Text(Goodnight.LEARN) }
+    }
+}
 
 /**
  * Wellbeing card the village shows at the end of a session — a soft invitation
