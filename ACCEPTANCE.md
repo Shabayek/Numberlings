@@ -178,7 +178,15 @@ Three things a child actually hit, all fixed and re-verified on the emulator:
    grouped under its meadow, **explains how stickers are earned and draws the
    30-slot album so the collected slots are obvious**, and closes by saying
    that this message is the one copy leaving the device. The machine-readable
-   tail has been removed — it was the least friendly part of the report.
+   tail has been removed — it was the least friendly part of the report, and
+   the closing lines no longer talk about what the app "knows about the
+   child", which read like a promise of data collection.
+6. **A grown-up can start again.** The Grown-ups zone now has a "Start again"
+   card with two guarded actions: *Forget one meadow…* (that meadow's skills
+   begin again; hearts, blocks, stickers and the other meadows are untouched)
+   and *Clear all progress…* (hearts, blocks, skills and stickers — the
+   settings and the meadow unlock stay). Both ask for confirmation first and
+   say plainly that it cannot be undone.
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

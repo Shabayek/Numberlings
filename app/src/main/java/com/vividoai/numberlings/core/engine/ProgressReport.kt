@@ -86,9 +86,9 @@ object ProgressReport {
             out.appendLine("THE STICKER ALBUM")
             out.appendLine("------------------")
             out.appendLine("A sticker is earned at every Market Day, and a Market Day comes after")
-            out.appendLine("every five finished blocks of puzzles (at the market the child counts")
-            out.appendLine("out the exact number of apples the stall keeper asks for).")
-            out.appendLine("The album has 30 slots - one for each sticker the child can collect.")
+            out.appendLine("every five finished blocks of puzzles (at the market, counting out")
+            out.appendLine("the exact number of apples the stall keeper asks for).")
+            out.appendLine("The album has 30 slots - one for every sticker that can be earned.")
             out.appendLine()
             out.appendLine(
                 "  Filled so far: ${stickers.size} of $stickerTotal " +
@@ -102,8 +102,8 @@ object ProgressReport {
         }
 
         out.appendLine()
-        out.appendLine("That is everything Numberlings knows about this child. The numbers live")
-        out.appendLine("only on this device; this message is the one copy leaving it.")
+        out.appendLine("A snapshot of the practice so far. It was made on this device, and")
+        out.appendLine("Numberlings keeps no copy of it anywhere else.")
         return out.toString().trimEnd() + "\n"
     }
 

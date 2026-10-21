@@ -2,8 +2,10 @@ package com.vividoai.numberlings.core.data
 
 import android.content.Context
 import com.vividoai.numberlings.core.engine.AdaptiveState
+import com.vividoai.numberlings.core.engine.Curriculum
 import com.vividoai.numberlings.core.engine.ProgressReport
 import com.vividoai.numberlings.core.data.GrownUps
+import com.vividoai.numberlings.core.model.Meadow
 import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.SkillKind
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -196,6 +198,30 @@ class VillageRepository(context: Context) {
      */
     fun unlockAllMeadows() {
         setGrownUps(currentSettings.copy(meadowsUnlocked = true))
+    }
+
+    /**
+     * Forget one meadow: the skills that live there start again, so the
+     * practice can be met fresh. Hearts, blocks, stickers and the other
+     * meadows are left exactly as they were.
+     */
+    fun forgetMeadow(meadow: Meadow) {
+        val skills = Curriculum.meadowSkills[meadow].orEmpty()
+        adaptive.value = adaptive.value.forget(skills)
+        persistSnapshot()
+    }
+
+    /**
+     * Erase the progress on this device: hearts, blocks, skills and stickers.
+     * The grown-up settings and the ownership of the meadows are not progress,
+     * so they stay.
+     */
+    fun clearAllProgress() {
+        adaptive.value = AdaptiveState()
+        _hearts.value = 0
+        _blocksCompleted.value = 0
+        _stickers.value = emptySet()
+        persistSnapshot()
     }
 
     private fun persistSnapshot() {

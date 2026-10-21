@@ -46,6 +46,16 @@ class DeviceNotes(context: Context) {
             .apply()
     }
 
+    /** Forget any block in progress, whoever it belonged to. */
+    fun clearBlockProgress() {
+        prefs.edit()
+            .remove(KEY_MEADOW)
+            .remove(KEY_SOLVED)
+            .remove(KEY_SEED)
+            .remove(KEY_PROMPT)
+            .apply()
+    }
+
     // ---- grown-up gate grace --------------------------------------------------
 
     /** True when a grown-up passed the gate recently, so they need not redo it. */

@@ -61,6 +61,20 @@ class ProgressReportTest {
     }
 
     @Test
+    fun `the closing lines are warm and never read like surveillance`() {
+        val report = ProgressReport.render(sample, hearts = 20, blocks = 20, stickers = setOf(4, 9, 24))
+
+        // no talk of what the app "knows about the child"
+        assertFalse(report.contains("knows about"))
+        assertFalse(report.contains("child"))
+        assertFalse(report.contains("collect about"))
+
+        // and it ends by saying the numbers stay put
+        assertTrue(report.contains("A snapshot of the practice so far"))
+        assertTrue(report.contains("keeps no copy of it anywhere else"))
+    }
+
+    @Test
     fun `a skill that has not been met is simply left out`() {
         val report = ProgressReport.render(
             mapOf(SkillKind.COUNT to 99),

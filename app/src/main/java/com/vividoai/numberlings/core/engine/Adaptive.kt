@@ -31,6 +31,13 @@ data class AdaptiveState(
         lastSkill = answered
     )
 
+    /**
+     * Forget what was practised in these skills, so they can be met again from
+     * the beginning. Everything else is left alone.
+     */
+    fun forget(skills: Collection<SkillKind>): AdaptiveState =
+        copy(scores = scores - skills.toSet(), lastSkill = null)
+
     fun tierFor(skill: SkillKind): Int = scoreOf(skill).tier(bias)
 
     /** Decode the persisted `skill:mastery` CSV blanket. */
