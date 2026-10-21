@@ -42,7 +42,9 @@ parent gate) → ESRB E / PEGI 3 expected.
 > on your device. It has no internet permission, so nothing can be uploaded to us or
 > anywhere else. There is no account. There is no advertising, no tracking, no third-
 > party analytics. If you want a copy of your child's progress, use "Share progress"
-> inside the Grown-ups zone; it shares a tiny text file that you choose where to send.
+> inside the Grown-ups zone; it shares a short, plain-language report (named
+> skills, what they mean, and a machine-readable tail) that you choose where to
+> send.
 > Questions: contact@vividoai.eu
 
 ## Launch checklist

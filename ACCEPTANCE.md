@@ -171,6 +171,12 @@ Three things a child actually hit, all fixed and re-verified on the emulator:
 4. **The grown-up's rejected answer is now offered for replacing** instead of
    being appended to: the field selects its contents when it is tapped, and a
    rejected answer stays selected so the next thing typed swaps it out.
+5. **"Share progress" now shares a report, not a data dump.** It used to be a
+   bare CSV of skill ids (`0,99`, `1,99`, …) that no parent could read. The
+   shared text now opens with a plain explanation of what the numbers are,
+   gives the totals in words, lists every skill the child has met by name and
+   grouped under its meadow, and ends with a short machine-readable section for
+   anyone who wants the figures as data.
 
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release

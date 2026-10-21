@@ -166,10 +166,11 @@ fun GrownUpsHome(backToPlay: () -> Unit) {
                 Text("Hearts earned: $hearts — puzzle blocks: $blocks", color = Cocoa)
                 Button(onClick = {
                     scope.launch {
-                        val csv = GameHub.repository.exportCsv()
+                        val report = GameHub.repository.exportReport()
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Numberlings progress\n" + csv)
+                            putExtra(Intent.EXTRA_SUBJECT, "Numberlings progress report")
+                            putExtra(Intent.EXTRA_TEXT, report)
                         }
                         context.startActivity(Intent.createChooser(share, "Share progress"))
                     }

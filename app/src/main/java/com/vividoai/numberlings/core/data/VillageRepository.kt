@@ -2,6 +2,7 @@ package com.vividoai.numberlings.core.data
 
 import android.content.Context
 import com.vividoai.numberlings.core.engine.AdaptiveState
+import com.vividoai.numberlings.core.engine.ProgressReport
 import com.vividoai.numberlings.core.data.GrownUps
 import com.vividoai.numberlings.core.model.StickerAlbum
 import com.vividoai.numberlings.core.model.SkillKind
@@ -219,23 +220,19 @@ class VillageRepository(context: Context) {
         val blocks: Int
     )
 
-    suspend fun exportCsv(): String = withContext(Dispatchers.IO) {
-        val latest = try {
-            database.progressDao().current()
-        } catch (failure: Exception) {
-            android.util.Log.w("Numberlings", "could not read progress for sharing", failure)
-            null
-        } ?: return@withContext ""
-        buildString {
-            appendLine("skill,mastery_percent")
-            latest.masteryCsv.split(";").forEach { pair ->
-                if (pair.isNotBlank()) {
-                    val parts = pair.split(":")
-                    appendLine("${parts[0]},${parts.getOrNull(1) ?: "0"}")
-                }
-            }
-            appendLine("hearts,${latest.hearts}")
-            appendLine("blocks_completed,${latest.blocksCompleted}")
+    /**
+     * The report a grown-up shares: plain words, named skills, and a short
+     * machine-readable section at the end.
+     */
+    suspend fun exportReport(): String = withContext(Dispatchers.IO) {
+        val percent = adaptive.value.scores.mapValues { (_, score) ->
+            (score.mastery * 100).toInt().coerceIn(0, 100)
         }
+        ProgressReport.render(
+            masteryPercent = percent,
+            hearts = _hearts.value,
+            blocks = _blocksCompleted.value,
+            stickers = _stickers.value
+        )
     }
 }
