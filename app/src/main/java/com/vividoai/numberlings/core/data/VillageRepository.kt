@@ -44,6 +44,14 @@ class VillageRepository(context: Context) {
     private val database = VillageDatabase.build(context)
     private val grownups = GrownUpsStore(context)
 
+    /**
+     * The write queue. Created lazily so it can never be null: the writer
+     * coroutine starts inside `init`, and property initialisers run in
+     * declaration order — a plain `val` declared further down the class would
+     * still be null when the writer first reaches for it.
+     */
+    private val saveQueue: Channel<Snapshot> by lazy { Channel(Channel.UNLIMITED) }
+
     val adaptive = MutableStateFlow(AdaptiveState())
 
     private val _hearts = MutableStateFlow(0)
@@ -132,23 +140,36 @@ class VillageRepository(context: Context) {
 
         // One writer, one queue: snapshots are saved in the order they
         // happened, so the notebook never ends up holding an older moment.
+        startWriter()
+    }
+
+    /**
+     * Starts the one writer that owns the queue. If it ever stops, it starts
+     * again: a silent writer would mean a child quietly loses their progress.
+     */
+    private fun startWriter() {
         scope.launch {
-            for (snapshot in saveQueue) {
-                try {
-                    val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
-                    database.progressDao().upsert(
-                        latest.copy(
-                            masteryCsv = snapshot.mastery,
-                            stickersCsv = snapshot.stickers,
-                            hearts = snapshot.hearts,
-                            blocksCompleted = snapshot.blocks
+            try {
+                for (snapshot in saveQueue) {
+                    try {
+                        val latest = database.progressDao().current() ?: ProgressEntity(masteryCsv = "")
+                        database.progressDao().upsert(
+                            latest.copy(
+                                masteryCsv = snapshot.mastery,
+                                stickersCsv = snapshot.stickers,
+                                hearts = snapshot.hearts,
+                                blocksCompleted = snapshot.blocks
+                            )
                         )
-                    )
-                } catch (failure: Exception) {
-                    // A write that cannot land is not worth a crash: the memory
-                    // stays the truth and the next snapshot tries again.
-                    android.util.Log.w("Numberlings", "progress write failed", failure)
+                    } catch (failure: Exception) {
+                        // A write that cannot land is not worth a crash: the
+                        // memory stays the truth and the next snapshot tries again.
+                        android.util.Log.w("Numberlings", "progress write failed", failure)
+                    }
                 }
+            } catch (failure: Exception) {
+                android.util.Log.w("Numberlings", "progress writer stopped; starting it again", failure)
+                startWriter()
             }
         }
     }
@@ -197,8 +218,6 @@ class VillageRepository(context: Context) {
         val hearts: Int,
         val blocks: Int
     )
-
-    private val saveQueue = Channel<Snapshot>(Channel.UNLIMITED)
 
     suspend fun exportCsv(): String = withContext(Dispatchers.IO) {
         val latest = try {

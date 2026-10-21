@@ -125,6 +125,28 @@ headlines:
   can no longer score the next puzzle; a block in progress survives a restart;
   the rest invitation comes back if the child asks for "a few more".
 
+## Toolchain upgrade — 2026-10-21 (latest packages, re-verified on device)
+The build moved to the newest stable stack: **AGP 9.4.1** (new DSL, no opt-outs),
+**Gradle 9.8.2**, **Kotlin 2.4.21** through AGP 9's built-in Kotlin, **KSP 2.3.12**,
+**Compose BOM 2026.09.00** (Compose 1.12.1), **Room 2.8.5**, **Play Billing 9.1.0**,
+and the latest androidx (core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0,
+datastore 1.2.1); `compileSdk 37` / `targetSdk 36`. Two unused dependencies
+(navigation, viewmodel) were dropped. The purchase code was ported to Billing 9's
+suspend API and Room's new migration signature.
+
+Re-verified live on a freshly installed build: a complete puzzle block (including
+19- and 20-dot pictures that the old artwork could not draw), Market Day →
+*"Sticker 1 of 30 is yours."* → album **1 of 30** and the database row
+`('0:91;1:89','0',5,5)`, the grown-up gate (wrong answer → "Not quite — try again.",
+then the correct one), the community unlock, hardware back to the village, the
+redrawn missing-addend, hop-line and sharing pictures, and the release artifact
+(1.69 MB, still **no INTERNET permission**). Zero crashes, ANRs or StrictMode
+violations in the whole session.
+
+The upgrade also exposed (and fixed) a real ordering bug: the progress writer could
+start before its queue existed, so saves were silently dropped. The queue is now
+created lazily and the writer restarts itself if it ever stops.
+
 ## Known limitations, documented honestly
 - The single IAP requires one product ID configured in Play Console before release
   (`UnlockStore.billingConfigured`); until then the Community Unlock always works.

@@ -25,7 +25,7 @@ fun UnlockButton(snackbarHostState: SnackbarHostState) {
                 activity == null -> UnlockEffect.NOT_ON_THIS_DEVICE
                 else -> UnlockStore.purchase(context, activity)
             }
-            when (effect!!) {
+            when (effect) {
                 UnlockEffect.STARTED ->
                     snackbarHostState.showSnackbar("Follow the Google Play prompt to finish.")
                 UnlockEffect.ALREADY_OWNED ->

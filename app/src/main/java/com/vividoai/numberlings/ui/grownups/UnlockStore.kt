@@ -7,11 +7,16 @@ import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
-import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.acknowledgePurchase
+import com.android.billingclient.api.queryProductDetails
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -21,6 +26,8 @@ enum class UnlockEffect { STARTED, ALREADY_OWNED, NOT_ON_THIS_DEVICE }
  * One non-consumable unlock: all six meadows, forever. No subscriptions, no
  * consumables, no nudges inside the child area. If Google Play isn't reachable,
  * or the family skips this via Community Unlock, everything else stays free.
+ *
+ * Written against Play Billing 9.x, whose calls are suspend functions.
  */
 object UnlockStore {
     /** Real contents; family sees this unlock only inside the gated Grown-ups zone. */
@@ -35,6 +42,9 @@ object UnlockStore {
 
     private var client: BillingClient? = null
 
+    /** Purchases are acknowledged off the billing thread. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     /**
      * Called once a purchase is really made, so the app can open every meadow
      * for good. Nothing else grants it.
@@ -45,12 +55,14 @@ object UnlockStore {
         if (result.responseCode == BillingClient.BillingResponseCode.OK) {
             purchases?.forEach { purchase ->
                 if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                    client?.acknowledgePurchase(
-                        AcknowledgePurchaseParams.newBuilder()
-                            .setPurchaseToken(purchase.purchaseToken)
-                            .build()
-                    ) { }
-                    onPurchased?.invoke()
+                    scope.launch {
+                        client?.acknowledgePurchase(
+                            AcknowledgePurchaseParams.newBuilder()
+                                .setPurchaseToken(purchase.purchaseToken)
+                                .build()
+                        )
+                        onPurchased?.invoke()
+                    }
                 }
             }
         }
@@ -94,7 +106,7 @@ object UnlockStore {
         play: BillingClient,
         activity: Activity,
         productId: String
-    ): UnlockEffect = suspendCoroutine { continuation ->
+    ): UnlockEffect {
         val params = QueryProductDetailsParams.newBuilder()
             .setProductList(
                 listOf(
@@ -106,30 +118,28 @@ object UnlockStore {
             )
             .build()
 
-        play.queryProductDetailsAsync(params) { result: BillingResult,
-            details: List<ProductDetails> ->
-            val product = details.firstOrNull()
-            if (result.responseCode != BillingClient.BillingResponseCode.OK || product == null) {
-                continuation.resume(UnlockEffect.NOT_ON_THIS_DEVICE)
-                return@queryProductDetailsAsync
-            }
-            val flowParams = BillingFlowParams.newBuilder()
-                .setProductDetailsParamsList(
-                    listOf(
-                        BillingFlowParams.ProductDetailsParams.newBuilder()
-                            .setProductDetails(product)
-                            .build()
-                    )
+        val details = play.queryProductDetails(params)
+        val product = details.productDetailsList?.firstOrNull()
+        if (details.billingResult.responseCode != BillingClient.BillingResponseCode.OK ||
+            product == null
+        ) {
+            return UnlockEffect.NOT_ON_THIS_DEVICE
+        }
+
+        val flowParams = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(
+                listOf(
+                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(product)
+                        .build()
                 )
-                .build()
-            val launchResult = play.launchBillingFlow(activity, flowParams)
-            continuation.resume(
-                if (launchResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                    UnlockEffect.STARTED
-                } else {
-                    UnlockEffect.NOT_ON_THIS_DEVICE
-                }
             )
+            .build()
+        val launchResult = play.launchBillingFlow(activity, flowParams)
+        return if (launchResult.responseCode == BillingClient.BillingResponseCode.OK) {
+            UnlockEffect.STARTED
+        } else {
+            UnlockEffect.NOT_ON_THIS_DEVICE
         }
     }
 }

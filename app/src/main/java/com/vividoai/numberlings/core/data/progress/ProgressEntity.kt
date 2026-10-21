@@ -47,6 +47,6 @@ abstract class VillageDatabase : RoomDatabase() {
                 context.applicationContext,
                 VillageDatabase::class.java,
                 "numberlings.db"
-            ).fallbackToDestructiveMigration().build()
+            ).fallbackToDestructiveMigration(dropAllTables = true).build()
     }
 }

@@ -72,11 +72,27 @@ device — Numberlings only talks to it locally, so nothing needs the internet.
 > `app/src/main/AndroidManifest.xml`, rebuild, and test the purchase flow
 > before shipping. The Play Store's own network access is not affected.
 
-**Verified build numbers (this repo, JDK 17 / AGP 8.7.3):**
-- `assembleDebug` → 17.8 MB, `assembleRelease` (R8) → **1.49 MB** unsigned APK.
+**Verified build numbers (this repo, JDK 21 / AGP 9.4.1):**
+- `assembleDebug` → ~20 MB, `assembleRelease` (R8) → **1.69 MB** unsigned APK.
 - Release build passes `lintVital` (Play submission lint gate).
 - Google Play prefers an **AAB** for uploads — run `.\gradlew.bat bundleRelease` with the
   signing config from the guide above before uploading to the listing.
+
+### Toolchain (upgraded 2026-10-21, re-verified on device)
+| Tool | Version | Note |
+| --- | --- | --- |
+| Android Gradle Plugin | 9.4.1 | new DSL enabled (no `android.newDsl=false` opt-out) |
+| Gradle | 9.8.2 | wrapper updated |
+| Kotlin | 2.4.21 | AGP 9's **built-in Kotlin**; the standalone `org.jetbrains.kotlin.android` plugin is no longer applied (AGP 9's new DSL rejects it) |
+| KSP | 2.3.12 | Room's code generator |
+| Compose BOM | 2026.09.00 | Compose 1.12.1 — needs `compileSdk 37` |
+| Room | 2.8.5 | `fallbackToDestructiveMigration(dropAllTables = true)` |
+| Play Billing | 9.1.0 | suspend `queryProductDetails` / `acknowledgePurchase` |
+| androidx | core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, datastore 1.2.1 | unused navigation + viewmodel dependencies dropped |
+| compileSdk / targetSdk | 37 / 36 | `android-37.0` platform; Play currently expects 36 for new apps |
+
+Build with **JDK 21** (`C:\Users\User\.jdks\jbr-21.0.11`); JDK 17 still works.
+The shipped package still requests **no INTERNET** permission after the upgrade.
 
 ## Signing a release build (keystore guide)
 The debug build signs itself. A release build needs YOUR keystore — make it
